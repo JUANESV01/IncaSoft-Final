@@ -1,0 +1,117 @@
+{% extends "gestion/base.html" %}
+{% block title %}Tablero | INCASOFT Solutions{% endblock %}
+{% block content %}
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Gestión integral</p>
+        <h1>Tablero de incapacidades</h1>
+    </div>
+    <a class="button primary" href="{% url 'gestion:incapacidad_crear' %}">＋ Registrar incapacidad</a>
+</header>
+
+<section class="metric-grid">
+    <article class="metric">
+        <div class="metric-emoji">🏥</div>
+        <span>Total incapacidades</span>
+        <strong>{{ total_incapacidades }}</strong>
+    </article>
+    <article class="metric">
+        <div class="metric-emoji">🔓</div>
+        <span>Casos abiertos</span>
+        <strong>{{ abiertas }}</strong>
+    </article>
+    <article class="metric">
+        <div class="metric-emoji">👥</div>
+        <span>Colaboradores</span>
+        <strong>{{ total_colaboradores }}</strong>
+    </article>
+    <article class="metric">
+        <div class="metric-emoji">📅</div>
+        <span>Días reportados</span>
+        <strong>{{ dias_reportados }}</strong>
+    </article>
+</section>
+
+<section class="dashboard-grid">
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Estados del ciclo de vida</h2>
+        </div>
+        <div class="state-flow">
+            {% for estado, total in conteo_estado.items %}
+                <span class="state-pill state-{{ estado|lower }}">{{ estado|title }} <strong>{{ total }}</strong></span>
+            {% endfor %}
+        </div>
+    </article>
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Tipos con más registros</h2>
+        </div>
+        <div class="bars">
+            {% for tipo in tipos %}
+                <div class="bar-row">
+                    <span>{{ tipo.nombre }}</span>
+                    <strong>{{ tipo.total }}</strong>
+                </div>
+            {% empty %}
+                <p class="empty">Aún no hay datos para graficar.</p>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+
+<section class="split">
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Registros recientes</h2>
+            <a href="{% url 'gestion:incapacidad_lista' %}" class="button ghost" style="min-height:32px;font-size:13px;">Ver todos →</a>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Colaborador</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                    <th>Días</th>
+                    <th>Inicio</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for item in recientes %}
+                <tr>
+                    <td>
+                        <strong>{{ item.colaborador.nombre_completo }}</strong>
+                        <small>{{ item.colaborador.numero_identificacion }}</small>
+                    </td>
+                    <td>{{ item.tipo.nombre }}</td>
+                    <td><span class="status state-{{ item.estado|lower }}">{{ item.get_estado_display }}</span></td>
+                    <td>{{ item.dias }}</td>
+                    <td>{{ item.fecha_inicio }}</td>
+                    <td><a class="table-action" href="{{ item.get_absolute_url }}">Ver</a></td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="empty">No hay incapacidades registradas.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </article>
+
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Historial de cambios</h2>
+        </div>
+        <div class="timeline">
+            {% for item in historial %}
+                <div>
+                    <strong>{{ item.incapacidad.colaborador.nombre_completo }}</strong>
+                    <span>{{ item.get_estado_anterior_display }} → {{ item.get_estado_nuevo_display }}</span>
+                    <small>{{ item.fecha|date:"d/m/Y H:i" }}{% if item.usuario %} · {{ item.usuario.username }}{% endif %}</small>
+                </div>
+            {% empty %}
+                <p class="empty">El historial aparecerá cuando se registren cambios.</p>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+{% endblock %}

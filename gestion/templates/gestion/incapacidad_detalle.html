@@ -1,0 +1,136 @@
+{% extends "gestion/base.html" %}
+{% block title %}Detalle incapacidad | INCASOFT Solutions{% endblock %}
+{% block content %}
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Detalle del caso</p>
+        <h1>{{ incapacidad.colaborador.nombre_completo }}</h1>
+    </div>
+    <div class="actions">
+        {% if puede_editar and not incapacidad.esta_cerrada %}
+            <a class="button primary" href="{% url 'gestion:incapacidad_estado' incapacidad.pk %}">🔄 Actualizar estado</a>
+        {% endif %}
+        <a class="button ghost" href="{% url 'gestion:incapacidad_lista' %}">← Volver</a>
+    </div>
+</header>
+
+<section class="detail-grid">
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Información de la incapacidad</h2>
+            <span class="status state-{{ incapacidad.estado|lower }}">{{ incapacidad.get_estado_display }}</span>
+        </div>
+        <dl class="data-list">
+            <div><dt>Tipo de incapacidad</dt><dd>{{ incapacidad.tipo.nombre }}</dd></div>
+            <div><dt>Entidad responsable</dt>
+                <dd>
+                    {% if incapacidad.entidad_responsable == "EPS" %}
+                        <span class="badge badge-eps">EPS</span>
+                    {% elif incapacidad.entidad_responsable == "ARL" %}
+                        <span class="badge badge-arl">ARL</span>
+                    {% else %}
+                        <span class="badge badge-emp">{{ incapacidad.entidad_responsable }}</span>
+                    {% endif %}
+                </dd>
+            </div>
+            <div><dt>Fecha de inicio</dt><dd>{{ incapacidad.fecha_inicio }}</dd></div>
+            <div><dt>Fecha de fin</dt><dd>{{ incapacidad.fecha_fin }}</dd></div>
+            <div><dt>Días de incapacidad</dt><dd><strong>{{ incapacidad.dias }} días</strong></dd></div>
+            <div><dt>Número de radicado</dt><dd>{{ incapacidad.numero_radicado|default:"Sin radicado" }}</dd></div>
+            <div><dt>Soporte médico</dt>
+                <dd>{% if incapacidad.soporte_medico %}<a href="{{ incapacidad.soporte_medico.url }}" target="_blank">📄 Abrir archivo</a>{% else %}No adjunto{% endif %}</dd>
+            </div>
+            <div><dt>Código tipo</dt><dd>{{ incapacidad.tipo.codigo }}</dd></div>
+            <div><dt>Registrado por</dt><dd>{{ incapacidad.creado_por.get_full_name|default:incapacidad.creado_por.username|default:"—" }}</dd></div>
+            <div><dt>Última actualización</dt><dd>{{ incapacidad.fecha_actualizacion|date:"d/m/Y H:i" }}</dd></div>
+        </dl>
+        {% if incapacidad.observaciones %}
+            <p class="note">📝 {{ incapacidad.observaciones }}</p>
+        {% endif %}
+    </article>
+
+    <article class="panel">
+        <div class="panel-head"><h2>Datos del colaborador</h2></div>
+        <dl class="data-list">
+            <div><dt>Tipo documento</dt><dd>{{ incapacidad.colaborador.tipo_documento }}</dd></div>
+            <div><dt>Número identificación</dt><dd>{{ incapacidad.colaborador.numero_identificacion }}</dd></div>
+            <div><dt>Cargo</dt><dd>{{ incapacidad.colaborador.cargo }}</dd></div>
+            <div><dt>Área</dt><dd>{{ incapacidad.colaborador.area }}</dd></div>
+            <div><dt>EPS</dt><dd>{{ incapacidad.colaborador.eps }}</dd></div>
+            <div><dt>ARL</dt><dd>{{ incapacidad.colaborador.arl|default:"No registrada" }}</dd></div>
+        </dl>
+        <div style="margin-top:16px;">
+            <a class="button ghost" href="{{ incapacidad.colaborador.get_absolute_url }}">Ver ficha completa →</a>
+        </div>
+    </article>
+</section>
+
+<section class="panel">
+    <div class="panel-head">
+        <h2>📋 Historial de estados</h2>
+    </div>
+    <div class="timeline wide">
+        {% for item in historial %}
+            <div>
+                <strong>{{ item.get_estado_anterior_display }} → {{ item.get_estado_nuevo_display }}</strong>
+                <span>{{ item.comentario|default:"Sin comentario" }}</span>
+                <small>{{ item.fecha|date:"d/m/Y H:i" }}{% if item.usuario %} · por {{ item.usuario.username }}{% endif %}</small>
+            </div>
+        {% empty %}
+            <p class="empty">No hay historial registrado.</p>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="panel">
+    <div class="panel-head">
+        <h2>📎 Documentos adjuntos</h2>
+        {% if puede_editar %}
+            <a class="button primary" href="{% url 'gestion:documento_subir' incapacidad.pk %}">+ Adjuntar archivo</a>
+        {% endif %}
+    </div>
+
+    {% if incapacidad.documentos.all %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Archivo</th>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Subido por</th>
+                    <th>Fecha</th>
+                    {% if puede_editar %}<th></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for doc in incapacidad.documentos.all %}
+                <tr>
+                    <td>
+                        {% if doc.es_imagen %}🖼️
+                        {% elif doc.es_pdf %}📄
+                        {% elif doc.es_word %}📝
+                        {% else %}📁{% endif %}
+                        <a href="{{ doc.archivo.url }}" target="_blank">{{ doc.archivo.name|cut:"documentos/"|cut:"soportes/" }}</a>
+                    </td>
+                    <td><span class="badge">{{ doc.get_tipo_display }}</span></td>
+                    <td>{{ doc.nombre|default:"—" }}</td>
+                    <td>{{ doc.subido_por.username|default:"—" }}</td>
+                    <td>{{ doc.fecha_subida|date:"d/m/Y H:i" }}</td>
+                    {% if puede_editar %}
+                    <td>
+                        <form method="post" action="{% url 'gestion:documento_eliminar' doc.pk %}"
+                              onsubmit="return confirm('¿Eliminar este documento?');">
+                            {% csrf_token %}
+                            <button class="button ghost" type="submit" style="padding:4px 10px;font-size:.8rem;color:#e53e3e;">🗑 Eliminar</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="empty" style="padding:20px 0;">No hay documentos adjuntos. {% if puede_editar %}<a href="{% url 'gestion:documento_subir' incapacidad.pk %}">Adjuntar el primero →</a>{% endif %}</p>
+    {% endif %}
+</section>
+{% endblock %}

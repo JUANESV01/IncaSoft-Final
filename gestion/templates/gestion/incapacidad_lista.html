@@ -1,0 +1,93 @@
+{% extends "gestion/base.html" %}
+{% block title %}Incapacidades | INCASOFT Solutions{% endblock %}
+{% block content %}
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Operación diaria</p>
+        <h1>Incapacidades</h1>
+    </div>
+    {% if puede_editar %}
+        <a class="button primary" href="{% url 'gestion:incapacidad_crear' %}">＋ Nueva incapacidad</a>
+    {% endif %}
+</header>
+
+{# ── Filtros ── #}
+<form class="filters" method="get">
+    <div class="filters-row">
+        <div class="filter-group">
+            <label class="filter-label">🔍 Buscar nombre / documento / radicado</label>
+            {{ form.q }}
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Tipo de incapacidad</label>
+            {{ form.tipo }}
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Estado</label>
+            {{ form.estado }}
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Fecha inicio (desde)</label>
+            {{ form.fecha_inicio }}
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Fecha fin (hasta)</label>
+            {{ form.fecha_fin }}
+        </div>
+        <div class="filter-group" style="justify-content:flex-end;">
+            <label class="filter-label">&nbsp;</label>
+            <button class="button primary" type="submit">Filtrar</button>
+        </div>
+        <div class="filter-group" style="justify-content:flex-end;">
+            <label class="filter-label">&nbsp;</label>
+            <a class="button ghost" href="{% url 'gestion:incapacidad_lista' %}">Limpiar</a>
+        </div>
+    </div>
+</form>
+
+<section class="panel">
+    <table>
+        <thead>
+            <tr>
+                <th>Colaborador</th>
+                <th>Documento</th>
+                <th>Tipo de incapacidad</th>
+                <th>Estado</th>
+                <th>Entidad</th>
+                <th>Periodo</th>
+                <th>Días</th>
+                <th>Radicado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for inc in incapacidades %}
+            <tr>
+                <td><strong>{{ inc.colaborador.nombre_completo }}</strong></td>
+                <td>
+                    <small>{{ inc.colaborador.tipo_documento }}</small>
+                    {{ inc.colaborador.numero_identificacion }}
+                </td>
+                <td>{{ inc.tipo.nombre }}</td>
+                <td><span class="status state-{{ inc.estado|lower }}">{{ inc.get_estado_display }}</span></td>
+                <td>
+                    {% if inc.entidad_responsable == "EPS" %}
+                        <span class="badge badge-eps">EPS</span>
+                    {% elif inc.entidad_responsable == "ARL" %}
+                        <span class="badge badge-arl">ARL</span>
+                    {% else %}
+                        <span class="badge badge-emp">{{ inc.entidad_responsable }}</span>
+                    {% endif %}
+                </td>
+                <td><small>{{ inc.fecha_inicio }} al {{ inc.fecha_fin }}</small></td>
+                <td><strong>{{ inc.dias }}</strong></td>
+                <td><small>{{ inc.numero_radicado|default:"—" }}</small></td>
+                <td><a class="table-action" href="{{ inc.get_absolute_url }}">Ver</a></td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="9" class="empty" style="text-align:center;padding:30px;">No se encontraron incapacidades con esos filtros.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

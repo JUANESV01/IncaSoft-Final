@@ -1,0 +1,58 @@
+{% extends "gestion/base.html" %}
+{% block title %}Usuarios | INCASOFT Solutions{% endblock %}
+{% block content %}
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Gestión de accesos</p>
+        <h1>Usuarios del sistema</h1>
+    </div>
+    <a class="button primary" href="{% url 'gestion:usuario_crear' %}">＋ Nuevo usuario</a>
+</header>
+
+<section class="panel">
+    <table>
+        <thead>
+            <tr>
+                <th>Usuario</th>
+                <th>Nombre completo</th>
+                <th>Correo</th>
+                <th>Roles asignados</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for usuario in usuarios %}
+            <tr>
+                <td>
+                    <strong>{{ usuario.username }}</strong>
+                    {% if usuario.is_superuser %}<small>Administrador principal</small>{% endif %}
+                </td>
+                <td>{{ usuario.get_full_name|default:"Sin nombre" }}</td>
+                <td><small>{{ usuario.email|default:"Sin correo" }}</small></td>
+                <td>
+                    {% if usuario.is_superuser %}
+                        <span class="mini-pill" style="background:#FFF4DC;color:#8A5A00;border-color:#E0B455;">Superusuario</span>
+                    {% endif %}
+                    {% for grupo in usuario.groups.all %}
+                        <span class="mini-pill">{{ grupo.name }}</span>
+                    {% empty %}
+                        {% if not usuario.is_superuser %}<span class="muted" style="font-size:13px;">Sin rol</span>{% endif %}
+                    {% endfor %}
+                </td>
+                <td>
+                    {% if usuario.is_active %}
+                        <span class="status ok">Activo</span>
+                    {% else %}
+                        <span class="status muted-status">Inactivo</span>
+                    {% endif %}
+                </td>
+                <td><a class="table-action" href="{% url 'gestion:usuario_editar' usuario.pk %}">Editar</a></td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="6" class="empty" style="text-align:center;padding:24px;">No hay usuarios registrados.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

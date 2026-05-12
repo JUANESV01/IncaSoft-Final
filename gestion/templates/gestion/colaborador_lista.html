@@ -1,0 +1,83 @@
+{% extends "gestion/base.html" %}
+{% block title %}Colaboradores | INCASOFT Solutions{% endblock %}
+{% block content %}
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Base de colaboradores</p>
+        <h1>Colaboradores</h1>
+    </div>
+    {% if puede_editar %}
+        <a class="button primary" href="{% url 'gestion:colaborador_crear' %}">＋ Nuevo colaborador</a>
+    {% endif %}
+</header>
+
+<form class="filters" method="get">
+    <div class="filters-row" style="grid-template-columns: 1fr 1fr 1fr auto auto;">
+        <div class="filter-group">
+            <label class="filter-label">🔍 Buscar por nombre</label>
+            <input type="search" name="q" value="{{ q }}" placeholder="Ej: Juan Pérez">
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">🪪 Documento</label>
+            <input type="search" name="doc" value="{{ doc|default:'' }}" placeholder="Número de identificación">
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">🏢 Área</label>
+            <input type="search" name="area" value="{{ area|default:'' }}" placeholder="Área o departamento">
+        </div>
+        <div class="filter-group" style="justify-content:flex-end;">
+            <label class="filter-label">&nbsp;</label>
+            <button class="button primary" type="submit">Buscar</button>
+        </div>
+        <div class="filter-group" style="justify-content:flex-end;">
+            <label class="filter-label">&nbsp;</label>
+            <a class="button ghost" href="{% url 'gestion:colaborador_lista' %}">Limpiar</a>
+        </div>
+    </div>
+</form>
+
+<section class="panel">
+    <table>
+        <thead>
+            <tr>
+                <th>Nombre completo</th>
+                <th>Documento</th>
+                <th>Área</th>
+                <th>Cargo</th>
+                <th>EPS</th>
+                <th>ARL</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for col in colaboradores %}
+            <tr>
+                <td>
+                    <strong>{{ col.nombre_completo }}</strong>
+                    <small>{{ col.correo|default:"Sin correo" }}</small>
+                </td>
+                <td>
+                    <small>{{ col.tipo_documento }}</small>
+                    {{ col.numero_identificacion }}
+                </td>
+                <td>{{ col.area }}</td>
+                <td>{{ col.cargo }}</td>
+                <td>{{ col.eps }}</td>
+                <td>{{ col.arl|default:"—" }}</td>
+                <td>
+                    {% if col.activo %}
+                        <span class="status ok">Activo</span>
+                    {% else %}
+                        <span class="status muted-status">Inactivo</span>
+                    {% endif %}
+                </td>
+                <td><a class="table-action" href="{{ col.get_absolute_url }}">Ver</a></td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="8" class="empty" style="text-align:center;padding:30px;">No se encontraron colaboradores.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

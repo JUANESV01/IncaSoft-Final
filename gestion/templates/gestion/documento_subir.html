@@ -1,0 +1,42 @@
+{% extends "gestion/base.html" %}
+{% block title %}Adjuntar documento | INCASOFT Solutions{% endblock %}
+{% block content %}
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Incapacidad #{{ incapacidad.pk }}</p>
+        <h1>Adjuntar documento</h1>
+        <p class="muted">{{ incapacidad.colaborador.nombre_completo }}</p>
+    </div>
+</header>
+
+<form class="panel form-panel" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+        <div class="message error" style="margin-bottom:18px;">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="upload-hint panel" style="background:var(--surface-2,#f9fafb);border:2px dashed var(--line);padding:18px 22px;margin-bottom:22px;border-radius:10px;">
+        <p style="margin:0 0 6px;font-weight:600;">📎 Formatos aceptados</p>
+        <p class="muted" style="margin:0;font-size:.85rem;">
+            PDF &nbsp;·&nbsp; Word (.doc / .docx) &nbsp;·&nbsp; Imagen (PNG / JPG / JPEG)<br>
+            Tamaño máximo: <strong>10 MB</strong>
+        </p>
+    </div>
+
+    <div class="form-grid">
+        {% for field in form %}
+            <div class="field {% if field.field.widget.input_type == 'checkbox' %}field-check{% endif %}">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+                {% for error in field.errors %}<span class="field-error">⚠ {{ error }}</span>{% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="actions" style="padding-top:8px;border-top:1px solid var(--line);">
+        <button class="button primary" type="submit">📤 Subir documento</button>
+        <a class="button ghost" href="{{ incapacidad.get_absolute_url }}">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

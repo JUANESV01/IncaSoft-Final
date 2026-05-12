@@ -1,0 +1,99 @@
+{% extends "gestion/base.html" %}
+{% block title %}Colaborador | INCASOFT Solutions{% endblock %}
+{% block content %}
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Ficha de colaborador</p>
+        <h1>{{ colaborador.nombre_completo }}</h1>
+    </div>
+    <div class="actions">
+        {% if puede_editar %}
+            <a class="button primary" href="{% url 'gestion:colaborador_editar' colaborador.pk %}">✏️ Editar</a>
+        {% endif %}
+        <a class="button ghost" href="{% url 'gestion:colaborador_lista' %}">← Volver</a>
+    </div>
+</header>
+
+<section class="detail-grid">
+    <article class="panel">
+        <div class="panel-head"><h2>Datos laborales</h2></div>
+        <dl class="data-list">
+            <div><dt>Tipo de documento</dt><dd>{{ colaborador.tipo_documento }}</dd></div>
+            <div><dt>Número de identificación</dt><dd>{{ colaborador.numero_identificacion }}</dd></div>
+            <div><dt>Cargo</dt><dd>{{ colaborador.cargo }}</dd></div>
+            <div><dt>Área</dt><dd>{{ colaborador.area }}</dd></div>
+            <div><dt>Correo</dt><dd>{{ colaborador.correo|default:"Sin correo" }}</dd></div>
+            <div><dt>Teléfono</dt><dd>{{ colaborador.telefono|default:"Sin teléfono" }}</dd></div>
+            <div><dt>Estado</dt>
+                <dd>{% if colaborador.activo %}<span class="status ok">Activo</span>{% else %}<span class="status muted-status">Inactivo</span>{% endif %}</dd>
+            </div>
+            <div><dt>Fecha de registro</dt><dd>{{ colaborador.fecha_creacion|date:"d/m/Y" }}</dd></div>
+        </dl>
+    </article>
+    <article class="panel">
+        <div class="panel-head"><h2>Afiliaciones de seguridad social</h2></div>
+        <dl class="data-list">
+            <div><dt>EPS</dt><dd>{{ colaborador.eps }}</dd></div>
+            <div><dt>ARL</dt><dd>{{ colaborador.arl|default:"No registrada" }}</dd></div>
+        </dl>
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line);">
+            <p class="filter-label" style="margin-bottom:10px;">Resumen de incapacidades</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div style="background:var(--surface-2);border-radius:var(--radius-sm);padding:12px;text-align:center;">
+                    <strong style="font-family:var(--font-display);font-size:28px;color:var(--teal);">{{ incapacidades.count }}</strong>
+                    <span style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-top:4px;">Total</span>
+                </div>
+                <div style="background:var(--surface-2);border-radius:var(--radius-sm);padding:12px;text-align:center;">
+                    <strong style="font-family:var(--font-display);font-size:28px;color:var(--gold);">{{ incapacidades|length }}</strong>
+                    <span style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-top:4px;">Registros</span>
+                </div>
+            </div>
+        </div>
+    </article>
+</section>
+
+<section class="panel">
+    <div class="panel-head">
+        <h2>Incapacidades asociadas</h2>
+        {% if puede_editar %}
+            <a class="button primary" href="{% url 'gestion:incapacidad_crear' %}">＋ Nueva</a>
+        {% endif %}
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Tipo de incapacidad</th>
+                <th>Estado</th>
+                <th>Entidad</th>
+                <th>Periodo</th>
+                <th>Días</th>
+                <th>Radicado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for item in incapacidades %}
+            <tr>
+                <td>{{ item.tipo.nombre }}</td>
+                <td><span class="status state-{{ item.estado|lower }}">{{ item.get_estado_display }}</span></td>
+                <td>
+                    {% if item.entidad_responsable == "EPS" %}
+                        <span class="badge badge-eps">EPS</span>
+                    {% elif item.entidad_responsable == "ARL" %}
+                        <span class="badge badge-arl">ARL</span>
+                    {% else %}
+                        <span class="badge badge-emp">{{ item.entidad_responsable }}</span>
+                    {% endif %}
+                </td>
+                <td><small>{{ item.fecha_inicio }} al {{ item.fecha_fin }}</small></td>
+                <td><strong>{{ item.dias }}</strong></td>
+                <td><small>{{ item.numero_radicado|default:"—" }}</small></td>
+                <td><a class="table-action" href="{{ item.get_absolute_url }}">Ver</a></td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="7" class="empty" style="text-align:center;padding:24px;">Este colaborador no tiene incapacidades registradas.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

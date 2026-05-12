@@ -1,0 +1,255 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="INCASOFT Solutions — Plataforma de gestión de incapacidades médicas para empresas colombianas.">
+    <title>Ingresar | INCASOFT Solutions</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="{% static 'gestion/css/styles.css' %}">
+    <style>
+        /* ── Login overrides ── */
+        .login-body {
+            background: var(--night);
+            background-image:
+                radial-gradient(ellipse at 15% 70%, rgba(27,95,110,.40) 0%, transparent 55%),
+                radial-gradient(ellipse at 85% 15%, rgba(200,144,42,.18) 0%, transparent 50%),
+                url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .login-shell {
+            width: min(1020px, 100%);
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            background: #fff;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: 0 48px 120px rgba(0,0,0,.40);
+            animation: slideUp .5s cubic-bezier(.22,1,.36,1) both;
+        }
+        @keyframes slideUp {
+            from { opacity:0; transform:translateY(24px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+        .login-panel {
+            padding: 56px 52px;
+            background: linear-gradient(150deg, var(--night) 0%, var(--night-3) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .login-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 25% 75%, rgba(27,95,110,.45) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        /* Greca decorativa en la esquina */
+        .login-panel::after {
+            content: '';
+            position: absolute;
+            bottom: -40px; right: -40px;
+            width: 200px; height: 200px;
+            border: 3px solid rgba(200,144,42,.15);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .login-panel-content { position: relative; z-index: 1; }
+        .login-logo-wrap {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+        .login-logo-img {
+            width: 80px; height: 80px;
+            object-fit: contain;
+            border-radius: 12px;
+            background: rgba(246,243,238,.10);
+            padding: 4px;
+            filter: drop-shadow(0 6px 20px rgba(200,144,42,.5));
+        }
+        .login-brand strong {
+            display: block;
+            font-family: var(--font-display);
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.1;
+        }
+        .login-brand small {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--gold);
+            font-weight: 600;
+        }
+        .login-panel h1 {
+            font-family: var(--font-display);
+            font-size: 36px;
+            color: #fff;
+            margin: 0 0 10px;
+            line-height: 1.15;
+        }
+        .login-panel p {
+            color: rgba(200,228,232,.68);
+            font-size: 14.5px;
+            line-height: 1.7;
+            margin: 0 0 28px;
+            max-width: 340px;
+        }
+        .login-features { display: grid; gap: 10px; }
+        .login-feature {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13.5px;
+            color: rgba(200,228,232,.65);
+        }
+        .login-feature-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: rgba(200,144,42,.2);
+            color: var(--gold);
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        /* ── Formulario derecho ── */
+        .login-form {
+            padding: 52px 44px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 18px;
+            background: #fff;
+        }
+        .login-form-top { margin-bottom: 4px; }
+        .login-form-top h2 {
+            font-family: var(--font-display);
+            font-size: 28px;
+            margin: 0 0 6px;
+            color: var(--night);
+        }
+        .login-form-top p {
+            font-size: 13.5px;
+            color: var(--muted);
+            margin: 0;
+        }
+        .login-divider {
+            height: 1px;
+            background: var(--line);
+            margin: 2px 0;
+        }
+        .login-field { display: grid; gap: 7px; }
+        .login-field label {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--ink-2);
+        }
+        .login-submit {
+            width: 100%;
+            justify-content: center;
+            min-height: 46px;
+            font-size: 15px;
+            letter-spacing: .3px;
+        }
+        .login-footer {
+            text-align: center;
+            font-size: 12px;
+            color: var(--muted);
+            padding-top: 4px;
+        }
+        @media (max-width: 780px) {
+            .login-shell { grid-template-columns: 1fr; }
+            .login-panel { display: none; }
+            .login-form { padding: 36px 28px; }
+        }
+    </style>
+</head>
+<body class="login-body">
+    <section class="login-shell">
+        <!-- Panel izquierdo — branding -->
+        <div class="login-panel">
+            <div class="login-panel-content">
+                <div class="login-logo-wrap">
+                    <img class="login-logo-img"
+                         src="{% static 'gestion/img/logo.png' %}"
+                         alt="INCASOFT Solutions">
+                    <div class="login-brand">
+                        <strong>INCASOFT Solutions</strong>
+                        <small>Gestión de Incapacidades</small>
+                    </div>
+                </div>
+
+                <h1>Gestione sus incapacidades con precisión</h1>
+                <p>Plataforma integral para el registro, trazabilidad y cobro de incapacidades médicas, licencias y permisos para empresas colombianas.</p>
+
+                <div class="login-features">
+                    <div class="login-feature">
+                        <span class="login-feature-icon">✓</span>
+                        Registro y seguimiento de incapacidades
+                    </div>
+                    <div class="login-feature">
+                        <span class="login-feature-icon">✓</span>
+                        Ciclo de vida: Recibida → Transcrita → Cobrada → Pagada
+                    </div>
+                    <div class="login-feature">
+                        <span class="login-feature-icon">✓</span>
+                        Adjuntar soportes: PDF, Word e imágenes
+                    </div>
+                    <div class="login-feature">
+                        <span class="login-feature-icon">✓</span>
+                        Reportes analíticos y exportación PDF
+                    </div>
+                    <div class="login-feature">
+                        <span class="login-feature-icon">✓</span>
+                        Control de acceso por roles y auditoría completa
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel derecho — formulario -->
+        <form class="login-form" method="post" autocomplete="on">
+            {% csrf_token %}
+            <div class="login-form-top">
+                <h2>Ingreso al sistema</h2>
+                <p>Ingrese sus credenciales para acceder</p>
+            </div>
+
+            <div class="login-divider"></div>
+
+            {% if form.errors %}
+                <div class="message error">
+                    ⚠ Credenciales inválidas. Verifique su usuario y contraseña.
+                </div>
+            {% endif %}
+
+            <div class="login-field">
+                <label for="{{ form.username.id_for_label }}">Usuario</label>
+                {{ form.username }}
+            </div>
+            <div class="login-field">
+                <label for="{{ form.password.id_for_label }}">Contraseña</label>
+                {{ form.password }}
+            </div>
+
+            <button class="button primary login-submit" type="submit" id="btn-ingresar">
+                Ingresar →
+            </button>
+
+            <div class="login-footer">
+                INCASOFT Solutions &copy; {% now "Y" %} &mdash; Todos los derechos reservados
+            </div>
+        </form>
+    </section>
+</body>
+</html>

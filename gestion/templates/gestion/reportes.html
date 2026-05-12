@@ -1,0 +1,128 @@
+{% extends "gestion/base.html" %}
+{% block title %}Reportes | INCASOFT Solutions{% endblock %}
+{% block content %}
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Analítica y cumplimiento</p>
+        <h1>Reportes</h1>
+    </div>
+    <div class="actions">
+        <a class="button ghost no-print" href="{% url 'gestion:reportes_pdf' %}?{{ request.GET.urlencode }}" target="_blank">📄 Exportar PDF</a>
+        <button class="button primary no-print" type="button" onclick="window.print()">🖨️ Imprimir</button>
+    </div>
+</header>
+
+<form class="filters no-print" method="get">
+    <div class="filters-row">
+        <div class="filter-group">
+            <label class="filter-label">🔍 Buscar nombre / documento</label>
+            {{ form.q }}
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Tipo de incapacidad</label>
+            {{ form.tipo }}
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Estado</label>
+            {{ form.estado }}
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Fecha inicio (desde)</label>
+            {{ form.fecha_inicio }}
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Fecha fin (hasta)</label>
+            {{ form.fecha_fin }}
+        </div>
+        <div class="filter-group" style="justify-content:flex-end;">
+            <label class="filter-label">&nbsp;</label>
+            <button class="button primary" type="submit">Aplicar</button>
+        </div>
+        <div class="filter-group" style="justify-content:flex-end;">
+            <label class="filter-label">&nbsp;</label>
+            <a class="button ghost" href="{% url 'gestion:reportes' %}">Limpiar</a>
+        </div>
+    </div>
+</form>
+
+<section class="metric-grid">
+    <article class="metric">
+        <div class="metric-emoji">📋</div>
+        <span>Casos del reporte</span>
+        <strong>{{ total }}</strong>
+    </article>
+    <article class="metric">
+        <div class="metric-emoji">📅</div>
+        <span>Días acumulados</span>
+        <strong>{{ dias }}</strong>
+    </article>
+    <article class="metric">
+        <div class="metric-emoji">🔵</div>
+        <span>Estados activos</span>
+        <strong>{{ por_estado|length }}</strong>
+    </article>
+    <article class="metric">
+        <div class="metric-emoji">🏷️</div>
+        <span>Tipos reportados</span>
+        <strong>{{ por_tipo|length }}</strong>
+    </article>
+</section>
+
+{{ por_estado|json_script:"estado-data" }}
+{{ por_tipo|json_script:"tipo-data" }}
+{{ por_mes|json_script:"mes-data" }}
+
+<section class="charts-grid">
+    <article class="panel">
+        <div class="panel-head"><h2>Distribución por estado</h2></div>
+        <canvas class="chart" data-chart="estado" height="260"></canvas>
+    </article>
+    <article class="panel">
+        <div class="panel-head"><h2>Tipos de incapacidad</h2></div>
+        <canvas class="chart" data-chart="tipo" height="260"></canvas>
+    </article>
+    <article class="panel wide-panel">
+        <div class="panel-head"><h2>Línea de tiempo mensual</h2></div>
+        <canvas class="chart" data-chart="mes" height="220"></canvas>
+    </article>
+</section>
+
+<section class="panel">
+    <div class="panel-head">
+        <h2>Muestra de registros</h2>
+        <span class="muted" style="font-size:13px;">Mostrando hasta 50 registros</span>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Colaborador</th>
+                <th>Documento</th>
+                <th>Tipo</th>
+                <th>Estado</th>
+                <th>Entidad</th>
+                <th>Periodo</th>
+                <th>Días</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for item in incapacidades %}
+            <tr>
+                <td><strong>{{ item.colaborador.nombre_completo }}</strong></td>
+                <td><small>{{ item.colaborador.tipo_documento }} {{ item.colaborador.numero_identificacion }}</small></td>
+                <td>{{ item.tipo.nombre }}</td>
+                <td><span class="status state-{{ item.estado|lower }}">{{ item.get_estado_display }}</span></td>
+                <td>
+                    {% if item.entidad_responsable == "EPS" %}<span class="badge badge-eps">EPS</span>
+                    {% elif item.entidad_responsable == "ARL" %}<span class="badge badge-arl">ARL</span>
+                    {% else %}<span class="badge badge-emp">{{ item.entidad_responsable }}</span>{% endif %}
+                </td>
+                <td><small>{{ item.fecha_inicio }} al {{ item.fecha_fin }}</small></td>
+                <td><strong>{{ item.dias }}</strong></td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="7" class="empty" style="text-align:center;padding:30px;">No hay datos para el reporte seleccionado.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

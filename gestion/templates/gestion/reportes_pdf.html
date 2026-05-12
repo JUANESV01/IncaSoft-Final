@@ -1,0 +1,237 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Reporte de Incapacidades | INCASOFT Solutions</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=DM+Sans:wght@400;500;700&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; font-size: 12px; color: #0C2A2E; background: #fff; }
+        /* ── Cabecera del reporte ── */
+        .report-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 28px 16px;
+            border-bottom: 3px solid #C8902A;
+            margin-bottom: 20px;
+        }
+        .report-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .report-brand img {
+            width: 52px; height: 52px;
+            object-fit: contain;
+        }
+        .report-brand-text strong {
+            display: block;
+            font-family: 'Crimson Pro', serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #1A5F6E;
+        }
+        .report-brand-text small {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #C8902A;
+            font-weight: 600;
+        }
+        .report-meta {
+            text-align: right;
+            font-size: 11px;
+            color: #6A8C90;
+            line-height: 1.6;
+        }
+        .report-meta strong { color: #0C2A2E; font-size: 13px; }
+        /* ── Resumen de métricas ── */
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin: 0 28px 20px;
+        }
+        .metric-box {
+            border: 1px solid #D2E3E6;
+            border-radius: 8px;
+            padding: 12px 14px;
+            background: #F4F7F8;
+        }
+        .metric-box .label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #6A8C90; font-weight: 700; margin-bottom: 4px; }
+        .metric-box .value { font-family: 'Crimson Pro', serif; font-size: 28px; font-weight: 700; color: #1A5F6E; }
+        /* ── Filtros aplicados ── */
+        .filters-applied {
+            margin: 0 28px 16px;
+            padding: 10px 14px;
+            background: #FDF6E3;
+            border-left: 3px solid #C8902A;
+            border-radius: 0 6px 6px 0;
+            font-size: 11px;
+            color: #6A8C90;
+        }
+        .filters-applied strong { color: #0C2A2E; }
+        /* ── Tabla principal ── */
+        .table-wrap { margin: 0 28px 24px; }
+        .table-title {
+            font-family: 'Crimson Pro', serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: #0C2A2E;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #D2E3E6;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th {
+            background: #1A5F6E;
+            color: #fff;
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            font-weight: 700;
+        }
+        td { padding: 8px 10px; border-bottom: 1px solid #EEF5F6; vertical-align: middle; }
+        tr:nth-child(even) td { background: #F4F7F8; }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .badge-recibida   { background: #E3EEFF; color: #1A4FA0; }
+        .badge-transcrita { background: #E6F8F0; color: #1A7A4A; }
+        .badge-cobrada    { background: #FFF8DC; color: #8A5A00; }
+        .badge-pagada     { background: #D8F5E8; color: #14643A; }
+        .badge-rechazada  { background: #FDECEA; color: #9B2318; }
+        .badge-eps { background: #E0EEFF; color: #1A5EA0; }
+        .badge-arl { background: #E0F8EC; color: #1A7A3A; }
+        .badge-emp { background: #FFF0DC; color: #8A5200; }
+        /* ── Pie de página ── */
+        .report-footer {
+            margin: 0 28px;
+            padding-top: 14px;
+            border-top: 1px solid #D2E3E6;
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #6A8C90;
+        }
+        @media print {
+            body { font-size: 11px; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body onload="window.print()">
+    <!-- Cabecera -->
+    <div class="report-header">
+        <div class="report-brand">
+            <img src="{% static 'gestion/img/logo.png' %}" alt="INCASOFT Solutions">
+            <div class="report-brand-text">
+                <strong>INCASOFT Solutions</strong>
+                <small>Gestión de Incapacidades</small>
+            </div>
+        </div>
+        <div class="report-meta">
+            <strong>Reporte de Incapacidades</strong><br>
+            Generado: {{ ahora|date:"d/m/Y H:i" }}<br>
+            Por: {{ request.user.get_full_name|default:request.user.username }}
+        </div>
+    </div>
+
+    <!-- Métricas -->
+    <div class="metrics">
+        <div class="metric-box">
+            <div class="label">Total casos</div>
+            <div class="value">{{ total }}</div>
+        </div>
+        <div class="metric-box">
+            <div class="label">Días acumulados</div>
+            <div class="value">{{ dias }}</div>
+        </div>
+        <div class="metric-box">
+            <div class="label">Estados activos</div>
+            <div class="value">{{ por_estado|length }}</div>
+        </div>
+        <div class="metric-box">
+            <div class="label">Tipos reportados</div>
+            <div class="value">{{ por_tipo|length }}</div>
+        </div>
+    </div>
+
+    <!-- Resumen por estado -->
+    {% if por_estado %}
+    <div class="table-wrap">
+        <div class="table-title">Distribución por Estado</div>
+        <table>
+            <thead><tr><th>Estado</th><th>Casos</th><th>%</th></tr></thead>
+            <tbody>
+            {% for item in por_estado %}
+                <tr>
+                    <td><span class="badge badge-{{ item.estado|lower }}">{{ item.estado }}</span></td>
+                    <td><strong>{{ item.total }}</strong></td>
+                    <td>{% if total %}{{ item.total|floatformat:0 }}{% endif %}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Tabla principal de registros -->
+    <div class="table-wrap">
+        <div class="table-title">Detalle de Incapacidades ({{ total }} registros)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Colaborador</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                    <th>Entidad</th>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                    <th>Días</th>
+                    <th>Radicado</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for item in incapacidades %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>
+                        <strong>{{ item.colaborador.nombre_completo }}</strong><br>
+                        <small style="color:#6A8C90;">{{ item.colaborador.tipo_documento }} {{ item.colaborador.numero_identificacion }}</small>
+                    </td>
+                    <td>{{ item.tipo.nombre }}</td>
+                    <td><span class="badge badge-{{ item.estado|lower }}">{{ item.get_estado_display }}</span></td>
+                    <td>
+                        {% if item.entidad_responsable == "EPS" %}<span class="badge badge-eps">EPS</span>
+                        {% elif item.entidad_responsable == "ARL" %}<span class="badge badge-arl">ARL</span>
+                        {% else %}<span class="badge badge-emp">{{ item.entidad_responsable }}</span>{% endif %}
+                    </td>
+                    <td>{{ item.fecha_inicio|date:"d/m/Y" }}</td>
+                    <td>{{ item.fecha_fin|date:"d/m/Y" }}</td>
+                    <td><strong>{{ item.dias }}</strong></td>
+                    <td><small>{{ item.numero_radicado|default:"—" }}</small></td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="9" style="text-align:center;padding:20px;color:#6A8C90;">Sin registros para los filtros aplicados.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pie -->
+    <div class="report-footer">
+        <span>INCASOFT Solutions &mdash; Sistema de Gestión de Incapacidades</span>
+        <span>Generado el {{ ahora|date:"d/m/Y \a \l\a\s H:i" }}</span>
+    </div>
+</body>
+</html>

@@ -1,0 +1,398 @@
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.db.models import Count, Q, Sum
+from django.db.models.functions import TruncMonth
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+
+from .forms import (
+    ColaboradorForm,
+    DocumentoForm,
+    EstadoIncapacidadForm,
+    IncapacidadFiltroForm,
+    IncapacidadForm,
+    UsuarioActualizarForm,
+    UsuarioCrearForm,
+)
+from .models import Auditoria, Colaborador, Documento, HistorialEstado, Incapacidad, TipoIncapacidad
+
+
+def _tiene_rol(user, *roles):
+    return user.is_superuser or user.groups.filter(name__in=roles).exists()
+
+
+def puede_gestionar_usuarios(user):
+    return user.is_authenticated and _tiene_rol(user, "Administrador")
+
+
+def puede_editar_operacion(user):
+    return _tiene_rol(user, "Administrador", "Gestion Humana", "Financiera", "Coordinacion")
+
+
+def registrar_auditoria(usuario, accion, detalle=""):
+    Auditoria.objects.create(usuario=usuario if usuario.is_authenticated else None, accion=accion, detalle=detalle)
+
+
+def _incapacidades_filtradas(request):
+    form = IncapacidadFiltroForm(request.GET or None)
+    incapacidades = Incapacidad.objects.select_related("colaborador", "tipo").all()
+    if form.is_valid():
+        q = form.cleaned_data.get("q")
+        estado = form.cleaned_data.get("estado")
+        tipo = form.cleaned_data.get("tipo")
+        fecha_inicio = form.cleaned_data.get("fecha_inicio")
+        fecha_fin = form.cleaned_data.get("fecha_fin")
+        if q:
+            incapacidades = incapacidades.filter(
+                Q(colaborador__nombres__icontains=q)
+                | Q(colaborador__apellidos__icontains=q)
+                | Q(colaborador__numero_identificacion__icontains=q)
+                | Q(numero_radicado__icontains=q)
+            )
+        if estado:
+            incapacidades = incapacidades.filter(estado=estado)
+        if tipo:
+            incapacidades = incapacidades.filter(tipo=tipo)
+        if fecha_inicio:
+            incapacidades = incapacidades.filter(fecha_inicio__gte=fecha_inicio)
+        if fecha_fin:
+            incapacidades = incapacidades.filter(fecha_fin__lte=fecha_fin)
+    return form, incapacidades
+
+
+@login_required
+def dashboard(request):
+    incapacidades = Incapacidad.objects.select_related("colaborador", "tipo")
+    conteo_estado = {estado: 0 for estado, _label in Incapacidad.ESTADO_CHOICES}
+    for item in incapacidades.values("estado").annotate(total=Count("id")):
+        conteo_estado[item["estado"]] = item["total"]
+
+    total = incapacidades.count()
+    dias = incapacidades.aggregate(total=Sum("dias"))["total"] or 0
+    recientes = incapacidades.order_by("-fecha_creacion")[:6]
+    historial = HistorialEstado.objects.select_related("incapacidad", "usuario", "incapacidad__colaborador")[:6]
+    tipos = TipoIncapacidad.objects.annotate(total=Count("incapacidades")).order_by("-total")
+
+    contexto = {
+        "total_incapacidades": total,
+        "total_colaboradores": Colaborador.objects.count(),
+        "dias_reportados": dias,
+        "abiertas": incapacidades.exclude(estado__in=[Incapacidad.ESTADO_PAGADA, Incapacidad.ESTADO_RECHAZADA]).count(),
+        "conteo_estado": conteo_estado,
+        "recientes": recientes,
+        "historial": historial,
+        "tipos": tipos,
+    }
+    return render(request, "gestion/dashboard.html", contexto)
+
+
+@login_required
+def incapacidad_lista(request):
+    form, incapacidades = _incapacidades_filtradas(request)
+    return render(
+        request,
+        "gestion/incapacidad_lista.html",
+        {
+            "form": form,
+            "incapacidades": incapacidades,
+            "puede_editar": puede_editar_operacion(request.user),
+        },
+    )
+
+
+@login_required
+def incapacidad_crear(request):
+    if not puede_editar_operacion(request.user):
+        messages.error(request, "Tu rol tiene acceso de consulta, no de registro.")
+        return redirect("gestion:incapacidad_lista")
+    if request.method == "POST":
+        form = IncapacidadForm(request.POST, request.FILES)
+        if form.is_valid():
+            incapacidad = form.save(commit=False)
+            incapacidad.estado = Incapacidad.ESTADO_RECIBIDA
+            incapacidad.creado_por = request.user
+            incapacidad.actualizado_por = request.user
+            try:
+                incapacidad.full_clean()
+                incapacidad.save()
+                HistorialEstado.objects.create(
+                    incapacidad=incapacidad,
+                    estado_anterior=Incapacidad.ESTADO_RECIBIDA,
+                    estado_nuevo=Incapacidad.ESTADO_RECIBIDA,
+                    comentario="Registro inicial de la incapacidad.",
+                    usuario=request.user,
+                )
+                registrar_auditoria(request.user, "Registro de incapacidad", str(incapacidad))
+                messages.success(request, "Incapacidad registrada en estado Recibida.")
+                return redirect(incapacidad)
+            except ValidationError as exc:
+                if hasattr(exc, "message_dict"):
+                    for field, errors in exc.message_dict.items():
+                        for error in errors:
+                            form.add_error(field if field in form.fields else None, error)
+                else:
+                    form.add_error(None, exc)
+    else:
+        form = IncapacidadForm()
+    return render(request, "gestion/formulario.html", {"form": form, "titulo": "Registrar incapacidad"})
+
+
+@login_required
+def incapacidad_detalle(request, pk):
+    incapacidad = get_object_or_404(
+        Incapacidad.objects.select_related("colaborador", "tipo", "creado_por", "actualizado_por"), pk=pk
+    )
+    return render(
+        request,
+        "gestion/incapacidad_detalle.html",
+        {
+            "incapacidad": incapacidad,
+            "historial": incapacidad.historial.select_related("usuario"),
+            "puede_editar": puede_editar_operacion(request.user),
+        },
+    )
+
+
+@login_required
+def incapacidad_estado(request, pk):
+    incapacidad = get_object_or_404(Incapacidad, pk=pk)
+    if not puede_editar_operacion(request.user):
+        messages.error(request, "Tu rol no permite actualizar estados.")
+        return redirect(incapacidad)
+    if request.method == "POST":
+        form = EstadoIncapacidadForm(incapacidad, request.POST)
+        if form.is_valid():
+            try:
+                incapacidad.cambiar_estado(
+                    form.cleaned_data["estado"],
+                    usuario=request.user,
+                    comentario=form.cleaned_data["comentario"],
+                )
+                registrar_auditoria(request.user, "Actualizacion de estado", str(incapacidad))
+                messages.success(request, "Estado actualizado y registrado en historial.")
+                return redirect(incapacidad)
+            except ValidationError as exc:
+                form.add_error("estado", exc)
+    else:
+        form = EstadoIncapacidadForm(incapacidad)
+    return render(
+        request,
+        "gestion/formulario.html",
+        {"form": form, "titulo": f"Actualizar estado: {incapacidad.colaborador.nombre_completo}"},
+    )
+
+
+@login_required
+def colaborador_lista(request):
+    q = request.GET.get("q", "")
+    doc = request.GET.get("doc", "")
+    area = request.GET.get("area", "")
+    colaboradores = Colaborador.objects.all()
+    if q:
+        colaboradores = colaboradores.filter(
+            Q(nombres__icontains=q) | Q(apellidos__icontains=q)
+        )
+    if doc:
+        colaboradores = colaboradores.filter(numero_identificacion__icontains=doc)
+    if area:
+        colaboradores = colaboradores.filter(area__icontains=area)
+    return render(
+        request,
+        "gestion/colaborador_lista.html",
+        {
+            "colaboradores": colaboradores,
+            "q": q,
+            "doc": doc,
+            "area": area,
+            "puede_editar": puede_editar_operacion(request.user),
+        },
+    )
+
+
+@login_required
+def colaborador_crear(request):
+    if not puede_editar_operacion(request.user):
+        messages.error(request, "Tu rol tiene acceso de consulta, no de registro.")
+        return redirect("gestion:colaborador_lista")
+    if request.method == "POST":
+        form = ColaboradorForm(request.POST)
+        if form.is_valid():
+            colaborador = form.save()
+            registrar_auditoria(request.user, "Registro de colaborador", str(colaborador))
+            messages.success(request, "Colaborador registrado.")
+            return redirect(colaborador)
+    else:
+        form = ColaboradorForm()
+    return render(request, "gestion/formulario.html", {"form": form, "titulo": "Registrar colaborador"})
+
+
+@login_required
+def colaborador_editar(request, pk):
+    colaborador = get_object_or_404(Colaborador, pk=pk)
+    if not puede_editar_operacion(request.user):
+        messages.error(request, "Tu rol no permite actualizar colaboradores.")
+        return redirect(colaborador)
+    if request.method == "POST":
+        form = ColaboradorForm(request.POST, instance=colaborador)
+        if form.is_valid():
+            colaborador = form.save()
+            registrar_auditoria(request.user, "Actualizacion de colaborador", str(colaborador))
+            messages.success(request, "Colaborador actualizado.")
+            return redirect(colaborador)
+    else:
+        form = ColaboradorForm(instance=colaborador)
+    return render(request, "gestion/formulario.html", {"form": form, "titulo": "Actualizar colaborador"})
+
+
+@login_required
+def colaborador_detalle(request, pk):
+    colaborador = get_object_or_404(Colaborador, pk=pk)
+    incapacidades = colaborador.incapacidades.select_related("tipo").all()
+    return render(
+        request,
+        "gestion/colaborador_detalle.html",
+        {
+            "colaborador": colaborador,
+            "incapacidades": incapacidades,
+            "puede_editar": puede_editar_operacion(request.user),
+        },
+    )
+
+
+@login_required
+def reportes(request):
+    form, incapacidades = _incapacidades_filtradas(request)
+    por_estado = list(incapacidades.values("estado").annotate(total=Count("id")).order_by("estado"))
+    por_tipo = list(incapacidades.values("tipo__nombre").annotate(total=Count("id")).order_by("-total"))
+    por_mes = [
+        {
+            "mes": item["mes_fecha"].strftime("%Y-%m") if item["mes_fecha"] else "Sin fecha",
+            "total": item["total"],
+        }
+        for item in incapacidades.annotate(mes_fecha=TruncMonth("fecha_inicio"))
+        .values("mes_fecha")
+        .annotate(total=Count("id"))
+        .order_by("mes_fecha")
+    ]
+    contexto = {
+        "form": form,
+        "incapacidades": incapacidades[:50],
+        "total": incapacidades.count(),
+        "dias": incapacidades.aggregate(total=Sum("dias"))["total"] or 0,
+        "por_estado": por_estado,
+        "por_tipo": por_tipo,
+        "por_mes": por_mes,
+    }
+    return render(request, "gestion/reportes.html", contexto)
+
+
+@login_required
+def reportes_pdf(request):
+    """Vista de impresión/exportación PDF del reporte (abre en nueva pestaña)."""
+    from django.utils import timezone as tz
+    form, incapacidades = _incapacidades_filtradas(request)
+    por_estado = list(incapacidades.values("estado").annotate(total=Count("id")).order_by("estado"))
+    por_tipo = list(incapacidades.values("tipo__nombre").annotate(total=Count("id")).order_by("-total"))
+    contexto = {
+        "form": form,
+        "incapacidades": incapacidades,
+        "total": incapacidades.count(),
+        "dias": incapacidades.aggregate(total=Sum("dias"))["total"] or 0,
+        "por_estado": por_estado,
+        "por_tipo": por_tipo,
+        "ahora": tz.localtime(),
+    }
+    return render(request, "gestion/reportes_pdf.html", contexto)
+
+
+@login_required
+@user_passes_test(puede_gestionar_usuarios)
+def usuario_lista(request):
+    usuarios = User.objects.prefetch_related("groups").order_by("username")
+    return render(request, "gestion/usuario_lista.html", {"usuarios": usuarios})
+
+
+@login_required
+@user_passes_test(puede_gestionar_usuarios)
+def usuario_crear(request):
+    if request.method == "POST":
+        form = UsuarioCrearForm(request.POST)
+        if form.is_valid():
+            usuario = form.save()
+            registrar_auditoria(request.user, "Creacion de usuario", usuario.username)
+            messages.success(request, "Usuario creado. Los roles aplicaran en su proxima autenticacion.")
+            return redirect(reverse("gestion:usuario_lista"))
+    else:
+        form = UsuarioCrearForm()
+    return render(request, "gestion/formulario.html", {"form": form, "titulo": "Crear usuario"})
+
+
+@login_required
+@user_passes_test(puede_gestionar_usuarios)
+def usuario_editar(request, pk):
+    usuario = get_object_or_404(User, pk=pk)
+    if request.method == "POST":
+        form = UsuarioActualizarForm(request.POST, instance=usuario)
+        if form.is_valid():
+            form.save()
+            registrar_auditoria(request.user, "Actualizacion de usuario", usuario.username)
+            messages.success(request, "Usuario actualizado. Los cambios de rol aplican en la proxima autenticacion.")
+            return redirect(reverse("gestion:usuario_lista"))
+    else:
+        form = UsuarioActualizarForm(instance=usuario)
+    return render(request, "gestion/formulario.html", {"form": form, "titulo": f"Editar usuario: {usuario.username}"})
+
+
+# ── Documentos adjuntos ───────────────────────────────────────────────────────
+
+@login_required
+def documento_subir(request, incapacidad_pk):
+    """Sube un archivo (PDF, Word o imagen) adjunto a una incapacidad."""
+    incapacidad = get_object_or_404(Incapacidad, pk=incapacidad_pk)
+    if not puede_editar_operacion(request.user):
+        messages.error(request, "Tu rol no permite subir documentos.")
+        return redirect(incapacidad)
+    if request.method == "POST":
+        form = DocumentoForm(request.POST, request.FILES)
+        if form.is_valid():
+            doc = form.save(commit=False)
+            doc.incapacidad = incapacidad
+            doc.subido_por = request.user
+            doc.save()
+            registrar_auditoria(
+                request.user,
+                "Documento adjuntado",
+                f"{doc.get_tipo_display()} - {incapacidad}",
+            )
+            messages.success(request, "Documento adjuntado correctamente.")
+            return redirect(incapacidad)
+    else:
+        form = DocumentoForm()
+    return render(
+        request,
+        "gestion/documento_subir.html",
+        {
+            "form": form,
+            "incapacidad": incapacidad,
+            "titulo": "Adjuntar documento",
+        },
+    )
+
+
+@login_required
+def documento_eliminar(request, pk):
+    """Elimina un documento adjunto (solo POST)."""
+    doc = get_object_or_404(Documento, pk=pk)
+    incapacidad = doc.incapacidad
+    if not puede_editar_operacion(request.user):
+        messages.error(request, "Tu rol no permite eliminar documentos.")
+        return redirect(incapacidad)
+    if request.method == "POST":
+        nombre = str(doc)
+        doc.archivo.delete(save=False)   # borra el archivo físico
+        doc.delete()
+        registrar_auditoria(request.user, "Documento eliminado", nombre)
+        messages.success(request, "Documento eliminado.")
+    return redirect(incapacidad)
