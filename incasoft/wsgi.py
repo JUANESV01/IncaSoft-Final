@@ -22,6 +22,15 @@ try:
     from django.core.management import call_command
     print("Ejecutando migraciones automáticamente desde wsgi.py...", file=sys.stderr)
     call_command('migrate', interactive=False)
+    
+    # Auto-crear usuarios si no existen
+    try:
+        import crear_admin
+        print("Verificando usuarios predeterminados...", file=sys.stderr)
+        crear_admin.main()
+    except Exception as e2:
+        print(f"Error al crear usuarios predeterminados: {e2}", file=sys.stderr)
+
 except Exception as e:
     print(f"Error al ejecutar migraciones: {e}", file=sys.stderr)
 
