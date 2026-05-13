@@ -3,7 +3,7 @@
 ## Requisitos
 
 - Cuenta en [Render](https://render.com)
-- Base de datos **PostgreSQL** (Render → New → PostgreSQL). Copie **Internal Database URL** como `DATABASE_URL`.
+- Una base **PostgreSQL** ya creada en Render (por ejemplo `incasoft-db`). **No hace falta crear otra:** en el **Web Service** use **Connect** → **Link database** y elija esa instancia; Render inyecta **`DATABASE_URL`** automáticamente (URL interna). Solo si enlaza a mano, pegue la **Internal Database URL** como variable `DATABASE_URL` (nunca suba esa URL a Git).
 - Variables de entorno (ver abajo)
 
 ## Pasos rápidos
@@ -16,10 +16,10 @@
 
 | Variable | Descripción |
 |----------|-------------|
-| `DJANGO_SECRET_KEY` | Cadena larga y aleatoria (nunca la clave `django-insecure-*`). |
+| `DJANGO_SECRET_KEY` o `SECRET_KEY` | **Obligatorio** si `DJANGO_DEBUG=0` en Render: cadena aleatoria de **≥40 caracteres** (p. ej. `openssl rand -base64 48`). Sin esto el build falla al ejecutar `migrate`/`collectstatic`. |
 | `DJANGO_DEBUG` | `0` en producción. |
 | `DJANGO_ALLOWED_HOSTS` | Su dominio, p. ej. `incasoft.onrender.com` (sin `https://`). Render suele inyectar `RENDER_EXTERNAL_HOSTNAME`; el proyecto lo añade solo a `ALLOWED_HOSTS` si falta. |
-| `DATABASE_URL` | URL interna de PostgreSQL (Render la ofrece al enlazar la BD al servicio). |
+| `DATABASE_URL` | La aporta Render al **vincular** su PostgreSQL existente al Web Service (recomendado). Si ya la tiene, no cambie nada salvo que el servicio web no esté enlazado a esa BD. |
 | `GEMINI_API_KEY` | Opcional pero necesario para el botón de análisis IA en Reportes ([Google AI Studio](https://aistudio.google.com/apikey)). |
 | `GEMINI_MODEL` | Opcional. Por defecto `gemini-2.0-flash`. Si falla, use `gemini-1.5-flash` o defina `GEMINI_MODEL_FALLBACKS`. |
 | `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | Para recuperación de contraseña por correo (p. ej. SMTP Gmail con contraseña de aplicación). |

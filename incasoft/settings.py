@@ -39,7 +39,12 @@ load_env_file(BASE_DIR / '.env')
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-*j6hy_b)rx^bvn_=toa+%wuc3%r$+hldofu#o-tu0z)u81%(2%')
+# Render y otros hosts suelen definir SECRET_KEY o DJANGO_SECRET_KEY.
+SECRET_KEY = (
+    os.environ.get('DJANGO_SECRET_KEY', '').strip()
+    or os.environ.get('SECRET_KEY', '').strip()
+    or 'django-insecure-*j6hy_b)rx^bvn_=toa+%wuc3%r$+hldofu#o-tu0z)u81%(2%'
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env_bool('DJANGO_DEBUG', True)
@@ -263,13 +268,17 @@ if not DEBUG:
 
 # Validación mínima en despliegue Render sin DEBUG
 if RENDER and not DEBUG:
-    if 'django-insecure' in SECRET_KEY or len(SECRET_KEY) < 40:
+    _sk_env = bool(os.environ.get('DJANGO_SECRET_KEY', '').strip() or os.environ.get('SECRET_KEY', '').strip())
+    if not _sk_env or 'django-insecure' in SECRET_KEY or len(SECRET_KEY) < 40:
         raise ImproperlyConfigured(
-            'En Render con DJANGO_DEBUG=0 debe definir DJANGO_SECRET_KEY con un valor largo y aleatorio '
-            '(no use la clave de desarrollo por defecto).'
+            'En Render con DJANGO_DEBUG=0 debe definir una clave secreta en el panel Environment: '
+            'DJANGO_SECRET_KEY o SECRET_KEY (mínimo 40 caracteres aleatorios). '
+            'Ejemplo en su máquina: openssl rand -base64 48'
         )
     _db_engine = DATABASES['default'].get('ENGINE', '')
     if 'sqlite' in _db_engine:
         raise ImproperlyConfigured(
-            'En Render use PostgreSQL: en el panel cree una base PostgreSQL y enlace DATABASE_URL al servicio web.'
+            'En Render debe usar PostgreSQL (no SQLite). En el Web Service: Connect → Link database '
+            'y elija su instancia existente (p. ej. incasoft-db) para que exista DATABASE_URL, '
+            'o defina DATABASE_URL con la Internal Database URL de esa base.'
         )
