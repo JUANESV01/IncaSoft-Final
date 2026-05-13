@@ -98,6 +98,8 @@ class Incapacidad(models.Model):
     fecha_inicio = models.DateField()
     fecha_fin = models.DateField()
     dias = models.PositiveIntegerField(editable=False, default=1)
+    dias_empresa = models.PositiveIntegerField(editable=False, default=0)
+    dias_entidad = models.PositiveIntegerField(editable=False, default=0)
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ESTADO_RECIBIDA)
     soporte_medico = models.FileField(
         upload_to="soportes/%Y/%m/",
@@ -200,6 +202,18 @@ class Incapacidad(models.Model):
             self.dias = (self.fecha_fin - self.fecha_inicio).days + 1
         if self.tipo and not self.entidad_responsable:
             self.entidad_responsable = self.tipo.entidad_responsable
+            
+        # Cumplimiento de requerimientos (PDF):
+        # EG: primeros 2 días los paga la empresa, el resto la EPS.
+        # EP, AT, Maternidad, Paternidad: 100% desde el primer día la Entidad.
+        if self.tipo:
+            if self.tipo.codigo == "EG":
+                self.dias_empresa = min(2, self.dias)
+                self.dias_entidad = max(0, self.dias - 2)
+            else:
+                self.dias_empresa = 0
+                self.dias_entidad = self.dias
+
         super().save(*args, **kwargs)
 
     def puede_transicionar_a(self, nuevo_estado):
@@ -241,6 +255,8 @@ class Documento(models.Model):
 
     TIPO_CHOICES = [
         ("SOPORTE", "Soporte médico"),
+        ("EPICRISIS", "Epicrisis"),
+        ("FURIPS", "FURIPS (Accidente Tránsito)"),
         ("FORMULA", "Fórmula médica"),
         ("CARTA", "Carta / Comunicación"),
         ("LIQUIDACION", "Liquidación"),
