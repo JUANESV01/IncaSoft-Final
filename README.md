@@ -80,8 +80,9 @@ chmod +x build.sh && ./build.sh
 Ese comando:
 
 1. Instala **todas** las dependencias de `requirements.txt`.
-2. Ejecuta `python manage.py check`.
-3. Ejecuta `collectstatic` para WhiteNoise.
+2. Ejecuta **`collectstatic`** para WhiteNoise.
+
+El paso **Release** del `Procfile` (`migrate`) y el arranque con **Gunicorn** siguen exigiendo **`DJANGO_SECRET_KEY` o `SECRET_KEY`** (≥40 caracteres) y **`DATABASE_URL`** definidos en el panel de Render — añádalos **antes** del deploy o el release/web fallará con un mensaje claro.
 
 **No** incluya aquí `migrate` ni `crear_admin.py` (evita fallos y duplicados; las migraciones van en el **Release** del `Procfile`).
 

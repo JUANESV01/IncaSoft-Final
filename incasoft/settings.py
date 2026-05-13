@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -266,8 +267,26 @@ if not DEBUG:
     if env_bool('DJANGO_SECURE_SSL_REDIRECT', True):
         SECURE_SSL_REDIRECT = True
 
+# Validación estricta en Render + producción.
+# Se omite solo durante collectstatic/findstatic (build en Render puede correr antes de pegar SECRET_KEY).
+def _collectstatic_or_findstatic_argv() -> bool:
+    argv = getattr(sys, "argv", [])
+    for i, arg in enumerate(argv):
+        if os.path.basename(arg).lower() == "manage.py" and i + 1 < len(argv):
+            return argv[i + 1] in ("collectstatic", "findstatic")
+    return False
+
+
+def _render_strict_validation() -> bool:
+    if not (RENDER and not DEBUG):
+        return False
+    if _collectstatic_or_findstatic_argv():
+        return False
+    return True
+
+
 # Validación mínima en despliegue Render sin DEBUG
-if RENDER and not DEBUG:
+if _render_strict_validation():
     _sk_env = bool(os.environ.get('DJANGO_SECRET_KEY', '').strip() or os.environ.get('SECRET_KEY', '').strip())
     if not _sk_env or 'django-insecure' in SECRET_KEY or len(SECRET_KEY) < 40:
         raise ImproperlyConfigured(
