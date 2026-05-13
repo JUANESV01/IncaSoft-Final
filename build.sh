@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
-# Script de construcción para Render
+# Construcción para Render (o CI). Las migraciones las ejecuta el comando "release" del Procfile.
 set -o errexit
 
-# Instalar dependencias
 pip install -r requirements.txt
-
-# Recolectar archivos estáticos (CSS, JS, Imágenes)
 python manage.py collectstatic --no-input
-
-# Aplicar migraciones de base de datos
-python manage.py migrate

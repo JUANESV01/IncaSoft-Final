@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -42,11 +44,26 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-*j6hy_b)rx^bvn
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env_bool('DJANGO_DEBUG', True)
 
+# Render.com define RENDER=true y RENDER_EXTERNAL_HOSTNAME
+RENDER = env_bool('RENDER', False)
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME', '').strip()
+
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,[::1],testserver').split(',')
     if host.strip()
 ]
+if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS = [*ALLOWED_HOSTS, RENDER_EXTERNAL_HOSTNAME]
+
+# CSRF: obligatorio en HTTPS (login, recuperación de contraseña, fetch con cookies)
+_csrf_origins = os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').strip()
+if _csrf_origins:
+    CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(',') if o.strip()]
+elif RENDER_EXTERNAL_HOSTNAME:
+    CSRF_TRUSTED_ORIGINS = [f'https://{RENDER_EXTERNAL_HOSTNAME}']
+else:
+    CSRF_TRUSTED_ORIGINS = []
 
 
 # Application definition
@@ -94,36 +111,57 @@ TEMPLATES = [
 WSGI_APPLICATION = 'incasoft.wsgi.application'
 
 
-# Database
-# Use DB_ENGINE=postgresql in .env for the recommended local setup.
-DB_ENGINE = os.environ.get('DB_ENGINE', 'sqlite').lower()
+# Database: DATABASE_URL (Render, Heroku, etc.) tiene prioridad sobre DB_* / SQLite.
+DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
 
-if DB_ENGINE in {'postgres', 'postgresql'}:
+if DATABASE_URL:
+    import dj_database_url
+
+    _db_ssl_default = bool(
+        DATABASE_URL
+        and (
+            'render.com' in DATABASE_URL
+            or 'amazonaws.com' in DATABASE_URL
+            or 'sslmode=require' in DATABASE_URL
+        )
+    )
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('DB_NAME', 'incasoft_db'),
-            'USER': os.environ.get('DB_USER', 'incasoft_user'),
-            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-            'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-            'PORT': os.environ.get('DB_PORT', '5432'),
-            'CONN_MAX_AGE': env_int('DB_CONN_MAX_AGE', 60),
-            'CONN_HEALTH_CHECKS': env_bool('DB_CONN_HEALTH_CHECKS', True),
-            'OPTIONS': {
-                'connect_timeout': env_int('DB_CONNECT_TIMEOUT', 10),
-                'application_name': os.environ.get('DB_APPLICATION_NAME', 'incasoft_solutions'),
-                'sslmode': os.environ.get('DB_SSLMODE', 'prefer'),
-                'options': os.environ.get('DB_SESSION_OPTIONS', '-c timezone=America/Bogota'),
-            },
-        }
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=env_int('DB_CONN_MAX_AGE', 600),
+            conn_health_checks=True,
+            ssl_require=env_bool('DATABASE_SSL_REQUIRE', _db_ssl_default),
+        )
     }
 else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+    DB_ENGINE = os.environ.get('DB_ENGINE', 'sqlite').lower()
+
+    if DB_ENGINE in {'postgres', 'postgresql'}:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': os.environ.get('DB_NAME', 'incasoft_db'),
+                'USER': os.environ.get('DB_USER', 'incasoft_user'),
+                'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+                'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+                'PORT': os.environ.get('DB_PORT', '5432'),
+                'CONN_MAX_AGE': env_int('DB_CONN_MAX_AGE', 60),
+                'CONN_HEALTH_CHECKS': env_bool('DB_CONN_HEALTH_CHECKS', True),
+                'OPTIONS': {
+                    'connect_timeout': env_int('DB_CONNECT_TIMEOUT', 10),
+                    'application_name': os.environ.get('DB_APPLICATION_NAME', 'incasoft_solutions'),
+                    'sslmode': os.environ.get('DB_SSLMODE', 'prefer'),
+                    'options': os.environ.get('DB_SESSION_OPTIONS', '-c timezone=America/Bogota'),
+                },
+            }
         }
-    }
+    else:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
 
 
 # Password validation
@@ -173,14 +211,65 @@ LOGOUT_REDIRECT_URL = 'login'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Correo: en desarrollo se muestra en consola; en producción configure SMTP en .env
-EMAIL_BACKEND = os.environ.get(
-    'DJANGO_EMAIL_BACKEND',
-    'django.core.mail.backends.console.EmailBackend',
+# ── Correo (recuperación de contraseña, notificaciones) ─────────────────────
+# Si define EMAIL_HOST, se usa SMTP salvo que fuerce otro backend con DJANGO_EMAIL_BACKEND.
+EMAIL_HOST = os.environ.get('EMAIL_HOST', '').strip()
+EMAIL_PORT = env_int('EMAIL_PORT', 587)
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '').strip()
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', True)
+EMAIL_USE_SSL = env_bool('EMAIL_USE_SSL', False)
+EMAIL_TIMEOUT = env_int('EMAIL_TIMEOUT', 25)
+
+if EMAIL_HOST:
+    EMAIL_BACKEND = os.environ.get(
+        'DJANGO_EMAIL_BACKEND',
+        'django.core.mail.backends.smtp.EmailBackend',
+    )
+else:
+    EMAIL_BACKEND = os.environ.get(
+        'DJANGO_EMAIL_BACKEND',
+        'django.core.mail.backends.console.EmailBackend',
+    )
+
+DEFAULT_FROM_EMAIL = os.environ.get(
+    'DJANGO_DEFAULT_FROM_EMAIL',
+    EMAIL_HOST_USER or 'no-reply@incasoft.local',
 )
-DEFAULT_FROM_EMAIL = os.environ.get('DJANGO_DEFAULT_FROM_EMAIL', 'no-reply@incasoft.local')
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
-# Enlace absoluto en correos de recuperación (opcional)
+# Enlace absoluto en correos de recuperación
 SITE_NAME = os.environ.get('DJANGO_SITE_NAME', 'INCASOFT Solutions')
 PASSWORD_RESET_TIMEOUT = env_int('DJANGO_PASSWORD_RESET_TIMEOUT', 60 * 60 * 24 * 3)  # 3 días
+
+# Google Gemini (reportes — análisis con IA). Clave desde https://aistudio.google.com/apikey
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.0-flash').strip() or 'gemini-2.0-flash'
+# Modelos alternativos si el principal no está disponible en su región/cuenta (coma separada)
+_gemini_fb = os.environ.get('GEMINI_MODEL_FALLBACKS', 'gemini-2.5-flash,gemini-1.5-flash').strip()
+GEMINI_MODEL_FALLBACKS = tuple(m.strip() for m in _gemini_fb.split(',') if m.strip())
+GEMINI_MAX_RETRIES = env_int('GEMINI_MAX_RETRIES', 2)
+
+# --- Producción (HTTPS detrás de proxy, cookies seguras) ---
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    if env_bool('DJANGO_SECURE_SSL_REDIRECT', True):
+        SECURE_SSL_REDIRECT = True
+
+# Validación mínima en despliegue Render sin DEBUG
+if RENDER and not DEBUG:
+    if 'django-insecure' in SECRET_KEY or len(SECRET_KEY) < 40:
+        raise ImproperlyConfigured(
+            'En Render con DJANGO_DEBUG=0 debe definir DJANGO_SECRET_KEY con un valor largo y aleatorio '
+            '(no use la clave de desarrollo por defecto).'
+        )
+    _db_engine = DATABASES['default'].get('ENGINE', '')
+    if 'sqlite' in _db_engine:
+        raise ImproperlyConfigured(
+            'En Render use PostgreSQL: en el panel cree una base PostgreSQL y enlace DATABASE_URL al servicio web.'
+        )

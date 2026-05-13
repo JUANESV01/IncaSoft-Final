@@ -7,10 +7,21 @@
         <h1>Reportes</h1>
     </div>
     <div class="actions">
+        {% if gemini_ia_habilitada %}
+        <button class="button primary no-print" type="button" id="btn-reporte-ia">✨ Análisis con IA (Gemini)</button>
+        {% endif %}
         <a class="button ghost no-print" href="{% url 'gestion:reportes_pdf' %}?{{ request.GET.urlencode }}" target="_blank">📄 Exportar PDF</a>
-        <button class="button primary no-print" type="button" onclick="window.print()">🖨️ Imprimir</button>
+        <button class="button ghost no-print" type="button" onclick="window.print()">🖨️ Imprimir</button>
     </div>
 </header>
+
+{% if not gemini_ia_habilitada %}
+<p class="muted no-print" style="margin: -8px 0 20px; font-size: 13px;">
+    Para activar el análisis con <strong>Gemini</strong>, defina <code>GEMINI_API_KEY</code> en el entorno (clave gratuita en
+    <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>).
+    Opcional: <code>GEMINI_MODEL</code> (por defecto <code>gemini-2.0-flash</code>).
+</p>
+{% endif %}
 
 <form class="filters no-print" method="get">
     <div class="filters-row">
@@ -44,6 +55,20 @@
         </div>
     </div>
 </form>
+
+{% if gemini_ia_habilitada %}
+<section class="panel no-print ia-reporte-panel" id="panel-ia-reporte">
+    <div class="panel-head">
+        <h2>Análisis con inteligencia artificial</h2>
+        <span class="muted" style="font-size:13px;">Usa los mismos filtros del reporte · Solo se envían totales agregados (sin nombres ni documentos)</span>
+    </div>
+    <p class="muted" style="font-size:13px;margin-bottom:14px;">
+        El texto lo genera Google Gemini; verifique siempre los datos críticos antes de decisiones formales.
+    </p>
+    <div id="ia-reporte-estado" class="message" style="display:none;" role="status"></div>
+    <pre id="ia-reporte-salida" class="ia-reporte-salida" aria-live="polite" hidden></pre>
+</section>
+{% endif %}
 
 <section class="metric-grid">
     <article class="metric">
@@ -125,4 +150,63 @@
         </tbody>
     </table>
 </section>
+
+{% if gemini_ia_habilitada %}
+<script>
+(function () {
+  const btn = document.getElementById('btn-reporte-ia');
+  const estado = document.getElementById('ia-reporte-estado');
+  const salida = document.getElementById('ia-reporte-salida');
+  if (!btn || !estado || !salida) return;
+
+  function getCookie(name) {
+    const m = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+    return m ? decodeURIComponent(m[2]) : '';
+  }
+
+  btn.addEventListener('click', async function () {
+    const csrf = getCookie('csrftoken');
+    if (!csrf) {
+      estado.style.display = 'block';
+      estado.className = 'message error';
+      estado.textContent = 'No se encontró token CSRF. Recargue la página.';
+      return;
+    }
+    btn.disabled = true;
+    estado.style.display = 'block';
+    estado.className = 'message';
+    estado.textContent = 'Generando análisis…';
+    salida.hidden = true;
+    salida.textContent = '';
+
+    const query = window.location.search.replace(/^\?/, '');
+    try {
+      const res = await fetch('{% url "gestion:reportes_ia_analisis" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf,
+        },
+        body: JSON.stringify({ query: query }),
+      });
+      const data = await res.json().catch(function () { return {}; });
+      if (!res.ok || !data.ok) {
+        estado.className = 'message error';
+        estado.textContent = (data && data.error) ? data.error : 'Error al generar el análisis.';
+        return;
+      }
+      estado.className = 'message success';
+      estado.textContent = 'Análisis listo.';
+      salida.textContent = data.texto || '';
+      salida.hidden = false;
+    } catch (e) {
+      estado.className = 'message error';
+      estado.textContent = 'Error de red o del servidor. Intente más tarde.';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}

@@ -20,13 +20,15 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path, reverse_lazy
 
+from gestion.auth_views import PasswordResetView as IncaPasswordResetView
+
 urlpatterns = [
     path('', include('gestion.urls')),
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path(
         'password-reset/',
-        auth_views.PasswordResetView.as_view(
+        IncaPasswordResetView.as_view(
             template_name='registration/password_reset_form.html',
             email_template_name='registration/password_reset_email.txt',
             html_email_template_name='registration/password_reset_email.html',

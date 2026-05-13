@@ -13,14 +13,32 @@ from django.core.exceptions import ValidationError
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 
-# Extensiones permitidas (minúsculas, sin punto)
+# Extensiones permitidas (minúsculas, sin punto) — solo la extensión final del nombre
 ALLOWED_EXTENSIONS = frozenset(
     {"pdf", "png", "jpg", "jpeg", "doc", "docx", "xls", "xlsx"}
 )
 
+# Si el archivo termina con estos sufijos, se rechaza (disfraz de ejecutable / script)
+SUFFIXES_PELIGROSOS = (
+    ".exe",
+    ".bat",
+    ".cmd",
+    ".com",
+    ".scr",
+    ".pif",
+    ".msi",
+    ".dll",
+    ".sh",
+    ".ps1",
+    ".js",
+    ".vbs",
+    ".jar",
+    ".hta",
+    ".lnk",
+)
+
 # Firmas mágicas mínimas (primeros bytes del archivo)
 _MAGIC_CHECKS = {
-    "pdf": (b"%PDF",),
     "png": (b"\x89PNG\r\n\x1a\n",),
     "jpg": (b"\xff\xd8\xff",),
     "jpeg": (b"\xff\xd8\xff",),
@@ -33,20 +51,12 @@ _MAGIC_CHECKS = {
 }
 
 
-def _extensiones_peligrosas(nombre: str) -> bool:
-    """Detecta doble extensión u otras extensiones de riesgo en el nombre."""
-    base = os.path.basename(nombre or "").lower()
-    partes = base.split(".")
-    if len(partes) < 2:
-        return False
-    # Todas las extensiones del nombre deben estar en la lista blanca
-    exts = [p for p in partes[1:] if p]
-    if not exts:
-        return False
-    for e in exts:
-        if e not in ALLOWED_EXTENSIONS:
-            return True
-    return False
+def _nombre_archivo_peligroso(nombre: str) -> bool:
+    """Rutas extrañas o sufijos ejecutables típicos (p. ej. informe.pdf.exe)."""
+    base = os.path.basename((nombre or "").strip()).lower()
+    if not base or ".." in base.replace("\\", "/"):
+        return True
+    return any(base.endswith(suf) for suf in SUFFIXES_PELIGROSOS)
 
 
 def _leer_cabecera(f: BinaryIO, n: int = 16) -> bytes:
@@ -65,7 +75,7 @@ def validar_archivo_subido(
 ) -> None:
     """
     Valida un UploadedFile o FileField file:
-    - nombre y extensión
+    - nombre (solo sufijos claramente peligrosos; la extensión final es la que cuenta)
     - tamaño
     - firma binaria vs extensión declarada
     """
@@ -75,14 +85,15 @@ def validar_archivo_subido(
         raise ValidationError(["Debe seleccionar un archivo."])
 
     nombre = getattr(archivo, "name", "") or ""
-    if _extensiones_peligrosas(nombre):
+    if _nombre_archivo_peligroso(nombre):
         raise ValidationError(
             [
-                "El nombre del archivo no es válido o contiene extensiones no permitidas."
+                "El nombre del archivo no es válido o el tipo de archivo no está permitido por seguridad."
             ]
         )
 
-    ext = os.path.splitext(nombre)[1].lstrip(".").lower()
+    base = os.path.basename(nombre.strip())
+    ext = os.path.splitext(base)[1].lstrip(".").lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise ValidationError(
             [
@@ -97,6 +108,20 @@ def validar_archivo_subido(
         raise ValidationError(
             [f"El archivo supera el tamaño máximo permitido ({mb} MB)."]
         )
+
+    # PDF: muchos archivos válidos tienen comentario u otro byte antes de %PDF (ISO permite %PDF en los primeros 1024 bytes)
+    if ext == "pdf":
+        archivo.seek(0)
+        cab = archivo.read(1024)
+        archivo.seek(0)
+        if b"%PDF" not in cab:
+            raise ValidationError(
+                [
+                    "El archivo no parece un PDF válido (no se encontró la cabecera %PDF). "
+                    "Compruebe que el archivo no esté dañado."
+                ]
+            )
+        return
 
     magic_ok = _MAGIC_CHECKS.get(ext)
     if magic_ok:

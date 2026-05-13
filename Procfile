@@ -1,2 +1,2 @@
-web: gunicorn incasoft.wsgi
-release: python manage.py migrate
+release: python manage.py migrate --noinput
+web: gunicorn incasoft.wsgi:application --bind 0.0.0.0:$PORT --timeout 120

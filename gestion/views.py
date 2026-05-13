@@ -1,15 +1,19 @@
+import json
 import mimetypes
 import os
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncMonth
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpRequest, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_POST
 
 from .forms import (
     ColaboradorForm,
@@ -20,6 +24,7 @@ from .forms import (
     UsuarioActualizarForm,
     UsuarioCrearForm,
 )
+from .gemini_service import construir_resumen_agregado, generar_analisis_gemini
 from .models import Auditoria, Colaborador, Documento, HistorialEstado, Incapacidad, TipoIncapacidad
 from .permissions import puede_editar_operacion, puede_gestionar_usuarios
 
@@ -57,6 +62,17 @@ def _incapacidades_filtradas(request):
         if fecha_fin:
             incapacidades = incapacidades.filter(fecha_fin__lte=fecha_fin)
     return form, incapacidades
+
+
+def _incapacidades_filtradas_desde_querystring(query_string: str):
+    """Replica los filtros GET del reporte (misma lógica que la página de reportes)."""
+    qs = (query_string or "").strip()
+    if qs.startswith("?"):
+        qs = qs[1:]
+    shim = HttpRequest()
+    shim.method = "GET"
+    shim.GET = QueryDict(qs, mutable=True) if qs else QueryDict()
+    return _incapacidades_filtradas(shim)
 
 
 @login_required
@@ -262,6 +278,7 @@ def colaborador_detalle(request, pk):
 
 
 @login_required
+@ensure_csrf_cookie
 def reportes(request):
     form, incapacidades = _incapacidades_filtradas(request)
     por_estado = list(incapacidades.values("estado").annotate(total=Count("id")).order_by("estado"))
@@ -284,6 +301,7 @@ def reportes(request):
         "por_estado": por_estado,
         "por_tipo": por_tipo,
         "por_mes": por_mes,
+        "gemini_ia_habilitada": bool(getattr(settings, "GEMINI_API_KEY", "")),
     }
     return render(request, "gestion/reportes.html", contexto)
 
@@ -305,6 +323,73 @@ def reportes_pdf(request):
         "ahora": tz.localtime(),
     }
     return render(request, "gestion/reportes_pdf.html", contexto)
+
+
+@login_required
+@require_POST
+def reportes_ia_analisis(request):
+    """Genera texto de análisis con Gemini a partir de agregados del reporte (sin PII)."""
+    if not getattr(settings, "GEMINI_API_KEY", ""):
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Configure GEMINI_API_KEY en el servidor (p. ej. en .env). Obtenga una clave en Google AI Studio.",
+            },
+            status=503,
+        )
+
+    try:
+        payload = json.loads(request.body.decode() or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "Solicitud inválida."}, status=400)
+
+    query_string = payload.get("query", "")
+    if not isinstance(query_string, str):
+        query_string = ""
+
+    form, incapacidades = _incapacidades_filtradas_desde_querystring(query_string)
+    if not form.is_valid():
+        return JsonResponse({"ok": False, "error": "Los filtros enviados no son válidos."}, status=400)
+
+    total = incapacidades.count()
+    dias = incapacidades.aggregate(s=Sum("dias"))["s"] or 0
+    por_estado = list(incapacidades.values("estado").annotate(total=Count("id")).order_by("estado"))
+    por_tipo = list(incapacidades.values("tipo__nombre").annotate(total=Count("id")).order_by("-total"))
+    por_mes = [
+        {
+            "mes": item["mes_fecha"].strftime("%Y-%m") if item["mes_fecha"] else "Sin fecha",
+            "total": item["total"],
+        }
+        for item in incapacidades.annotate(mes_fecha=TruncMonth("fecha_inicio"))
+        .values("mes_fecha")
+        .annotate(total=Count("id"))
+        .order_by("mes_fecha")
+    ]
+    estado_labels = dict(Incapacidad.ESTADO_CHOICES)
+    resumen = construir_resumen_agregado(
+        total=total,
+        dias=dias,
+        por_estado=por_estado,
+        por_tipo=por_tipo,
+        por_mes=por_mes,
+        estado_labels=estado_labels,
+    )
+
+    try:
+        texto = generar_analisis_gemini(
+            resumen,
+            api_key=settings.GEMINI_API_KEY,
+            model_name=settings.GEMINI_MODEL,
+        )
+    except (ValueError, ImproperlyConfigured) as exc:
+        return JsonResponse({"ok": False, "error": str(exc)}, status=502)
+
+    registrar_auditoria(
+        request.user,
+        "Analisis IA (Gemini) en reportes",
+        f"total={total}; modelo={settings.GEMINI_MODEL}",
+    )
+    return JsonResponse({"ok": True, "texto": texto})
 
 
 @login_required

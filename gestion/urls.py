@@ -16,6 +16,7 @@ urlpatterns = [
     path("colaboradores/<int:pk>/editar/", views.colaborador_editar, name="colaborador_editar"),
     path("reportes/", views.reportes, name="reportes"),
     path("reportes/pdf/", views.reportes_pdf, name="reportes_pdf"),
+    path("reportes/ia/", views.reportes_ia_analisis, name="reportes_ia_analisis"),
     path("usuarios/", views.usuario_lista, name="usuario_lista"),
     path("usuarios/nuevo/", views.usuario_crear, name="usuario_crear"),
     path("usuarios/<int:pk>/editar/", views.usuario_editar, name="usuario_editar"),
