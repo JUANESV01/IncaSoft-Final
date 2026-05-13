@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
 ]
 
 MIDDLEWARE = [
@@ -84,6 +85,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'gestion.context_processors.permisos_ui',
             ],
         },
     },
@@ -170,3 +172,15 @@ LOGIN_REDIRECT_URL = 'gestion:dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Correo: en desarrollo se muestra en consola; en producción configure SMTP en .env
+EMAIL_BACKEND = os.environ.get(
+    'DJANGO_EMAIL_BACKEND',
+    'django.core.mail.backends.console.EmailBackend',
+)
+DEFAULT_FROM_EMAIL = os.environ.get('DJANGO_DEFAULT_FROM_EMAIL', 'no-reply@incasoft.local')
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+# Enlace absoluto en correos de recuperación (opcional)
+SITE_NAME = os.environ.get('DJANGO_SITE_NAME', 'INCASOFT Solutions')
+PASSWORD_RESET_TIMEOUT = env_int('DJANGO_PASSWORD_RESET_TIMEOUT', 60 * 60 * 24 * 3)  # 3 días

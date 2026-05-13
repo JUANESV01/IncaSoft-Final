@@ -40,18 +40,10 @@
                     <a href="{% url 'gestion:reportes' %}" {% if request.resolver_match.url_name == 'reportes' %}class="active"{% endif %}>
                         <span class="nav-icon">📈</span> Reportes
                     </a>
-                    {% if user.is_superuser %}
+                    {% if puede_gestionar_usuarios %}
                         <a href="{% url 'gestion:usuario_lista' %}" {% if 'usuario' in request.resolver_match.url_name %}class="active"{% endif %}>
                             <span class="nav-icon">🔐</span> Usuarios
                         </a>
-                    {% else %}
-                        {% for group in user.groups.all %}
-                            {% if group.name == "Administrador" %}
-                                <a href="{% url 'gestion:usuario_lista' %}">
-                                    <span class="nav-icon">🔐</span> Usuarios
-                                </a>
-                            {% endif %}
-                        {% endfor %}
                     {% endif %}
                 </nav>
             </div>
@@ -59,7 +51,9 @@
             <div class="session">
                 <span class="session-name">{{ request.user.get_full_name|default:request.user.username }}</span>
                 <span class="session-role">
-                    {% for g in request.user.groups.all %}{{ g.name }}{% empty %}Usuario{% endfor %}
+                    {% with g=user.groups.all|first %}
+                        {% if g %}{{ g.name }}{% elif user.is_superuser %}Superusuario{% else %}Usuario{% endif %}
+                    {% endwith %}
                 </span>
                 <form method="post" action="{% url 'logout' %}">
                     {% csrf_token %}

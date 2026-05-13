@@ -392,6 +392,24 @@ textarea { min-height: 96px; resize: vertical; }
 .login-field label { font-size: 13px; font-weight: 700; color: var(--ink-2); }
 .login-demo { padding: 12px 14px; background: var(--surface-2); border-radius: var(--radius-sm); border-left: 3px solid var(--teal); font-size: 12px; color: var(--muted); line-height: 1.6; }
 
+/* ── Adjuntos en detalle ── */
+.file-attachment {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  max-width: 100%;
+}
+.file-attachment-icon { font-size: 1.75rem; line-height: 1; flex-shrink: 0; }
+.file-attachment-body { min-width: 0; flex: 1; }
+.file-attachment-name { display: block; word-break: break-word; margin-bottom: 6px; }
+.file-attachment-meta { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.file-attachment-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.text-center { text-align: center; }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 1200px) { .metric-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 1100px) {

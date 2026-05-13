@@ -22,4 +22,17 @@ urlpatterns = [
     # Documentos adjuntos
     path("incapacidades/<int:incapacidad_pk>/documentos/subir/", views.documento_subir, name="documento_subir"),
     path("documentos/<int:pk>/eliminar/", views.documento_eliminar, name="documento_eliminar"),
+    # Archivos (vista previa / descarga con sesión)
+    path("incapacidades/<int:pk>/soporte/", views.incapacidad_soporte_ver, name="incapacidad_soporte_ver"),
+    path(
+        "incapacidades/<int:pk>/soporte/descargar/",
+        views.incapacidad_soporte_descargar,
+        name="incapacidad_soporte_descargar",
+    ),
+    path("documentos/<int:pk>/archivo/", views.documento_archivo_ver, name="documento_archivo_ver"),
+    path(
+        "documentos/<int:pk>/archivo/descargar/",
+        views.documento_archivo_descargar,
+        name="documento_archivo_descargar",
+    ),
 ]

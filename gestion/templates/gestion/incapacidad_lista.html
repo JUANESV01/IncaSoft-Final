@@ -57,6 +57,7 @@
                 <th>Periodo</th>
                 <th>Días</th>
                 <th>Radicado</th>
+                <th>Adjuntos</th>
                 <th></th>
             </tr>
         </thead>
@@ -82,10 +83,17 @@
                 <td><small>{{ inc.fecha_inicio }} al {{ inc.fecha_fin }}</small></td>
                 <td><strong>{{ inc.dias }}</strong></td>
                 <td><small>{{ inc.numero_radicado|default:"—" }}</small></td>
+                <td class="text-center">
+                    {% if inc.soporte_medico or inc.n_documentos %}
+                        <span title="Tiene soporte u otros archivos">📎</span>
+                    {% else %}
+                        <span class="muted">—</span>
+                    {% endif %}
+                </td>
                 <td><a class="table-action" href="{{ inc.get_absolute_url }}">Ver</a></td>
             </tr>
         {% empty %}
-            <tr><td colspan="9" class="empty" style="text-align:center;padding:30px;">No se encontraron incapacidades con esos filtros.</td></tr>
+            <tr><td colspan="10" class="empty" style="text-align:center;padding:30px;">No se encontraron incapacidades con esos filtros.</td></tr>
         {% endfor %}
         </tbody>
     </table>

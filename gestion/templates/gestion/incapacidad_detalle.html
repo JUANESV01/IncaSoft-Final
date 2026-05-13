@@ -1,4 +1,5 @@
 {% extends "gestion/base.html" %}
+{% load humanize %}
 {% block title %}Detalle incapacidad | INCASOFT Solutions{% endblock %}
 {% block content %}
 <header class="page-header">
@@ -38,7 +39,29 @@
             <div><dt>Días de incapacidad</dt><dd><strong>{{ incapacidad.dias }} días</strong></dd></div>
             <div><dt>Número de radicado</dt><dd>{{ incapacidad.numero_radicado|default:"Sin radicado" }}</dd></div>
             <div><dt>Soporte médico</dt>
-                <dd>{% if incapacidad.soporte_medico %}<a href="{{ incapacidad.soporte_medico.url }}" target="_blank">📄 Abrir archivo</a>{% else %}No adjunto{% endif %}</dd>
+                <dd>
+                    {% if incapacidad.soporte_medico %}
+                        <div class="file-attachment">
+                            <div class="file-attachment-icon" aria-hidden="true">
+                                {% if incapacidad.soporte_es_pdf %}📄{% elif incapacidad.soporte_es_imagen %}🖼️{% elif incapacidad.soporte_es_word %}📝{% elif incapacidad.soporte_es_excel %}📊{% else %}📁{% endif %}
+                            </div>
+                            <div class="file-attachment-body">
+                                <strong class="file-attachment-name">{{ incapacidad.soporte_nombre }}</strong>
+                                <div class="file-attachment-meta">
+                                    <span>{{ incapacidad.soporte_medico.size|filesizeformat }}</span>
+                                    <span>·</span>
+                                    <span>Registrado {{ incapacidad.fecha_creacion|date:"d/m/Y H:i" }}</span>
+                                </div>
+                                <div class="file-attachment-actions">
+                                    <a class="button ghost" href="{% url 'gestion:incapacidad_soporte_ver' incapacidad.pk %}" target="_blank" rel="noopener">Abrir en nueva pestaña</a>
+                                    <a class="button primary" href="{% url 'gestion:incapacidad_soporte_descargar' incapacidad.pk %}">Descargar</a>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <span class="muted">No adjunto</span>
+                    {% endif %}
+                </dd>
             </div>
             <div><dt>Código tipo</dt><dd>{{ incapacidad.tipo.codigo }}</dd></div>
             <div><dt>Registrado por</dt><dd>{{ incapacidad.creado_por.get_full_name|default:incapacidad.creado_por.username|default:"—" }}</dd></div>
@@ -97,8 +120,10 @@
                     <th>Archivo</th>
                     <th>Tipo</th>
                     <th>Descripción</th>
+                    <th>Tamaño</th>
                     <th>Subido por</th>
-                    <th>Fecha</th>
+                    <th>Fecha de subida</th>
+                    <th></th>
                     {% if puede_editar %}<th></th>{% endif %}
                 </tr>
             </thead>
@@ -109,13 +134,19 @@
                         {% if doc.es_imagen %}🖼️
                         {% elif doc.es_pdf %}📄
                         {% elif doc.es_word %}📝
+                        {% elif doc.es_excel %}📊
                         {% else %}📁{% endif %}
-                        <a href="{{ doc.archivo.url }}" target="_blank">{{ doc.archivo.name|cut:"documentos/"|cut:"soportes/" }}</a>
+                        <strong>{{ doc.archivo.name|cut:"documentos/" }}</strong>
                     </td>
                     <td><span class="badge">{{ doc.get_tipo_display }}</span></td>
                     <td>{{ doc.nombre|default:"—" }}</td>
+                    <td><small>{{ doc.archivo.size|filesizeformat }}</small></td>
                     <td>{{ doc.subido_por.username|default:"—" }}</td>
-                    <td>{{ doc.fecha_subida|date:"d/m/Y H:i" }}</td>
+                    <td><small>{{ doc.fecha_subida|date:"d/m/Y H:i" }}</small></td>
+                    <td>
+                        <a class="table-action" href="{% url 'gestion:documento_archivo_ver' doc.pk %}" target="_blank" rel="noopener">Ver</a>
+                        <a class="table-action" href="{% url 'gestion:documento_archivo_descargar' doc.pk %}">Descargar</a>
+                    </td>
                     {% if puede_editar %}
                     <td>
                         <form method="post" action="{% url 'gestion:documento_eliminar' doc.pk %}"

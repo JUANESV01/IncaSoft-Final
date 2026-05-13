@@ -3,11 +3,8 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
 
+from .file_validation import MAX_UPLOAD_BYTES, validar_archivo_subido
 from .models import Colaborador, Documento, Incapacidad, TipoIncapacidad
-
-# Máximo 10 MB por archivo
-MAX_UPLOAD_SIZE = 10 * 1024 * 1024
-EXTENSIONES_PERMITIDAS = {"pdf", "png", "jpg", "jpeg", "doc", "docx"}
 
 
 class DateInput(forms.DateInput):
@@ -63,6 +60,16 @@ class IncapacidadForm(forms.ModelForm):
         self.fields["colaborador"].empty_label = "Seleccione un colaborador"
         self.fields["tipo"].empty_label = "Seleccione el tipo"
         self.fields["entidad_responsable"].help_text = "EPS, ARL o entidad responsable del cobro."
+        self.fields["soporte_medico"].help_text = (
+            f"PDF, Word, Excel o imagen. Tamaño máximo {MAX_UPLOAD_BYTES // (1024 * 1024)} MB."
+        )
+
+    def clean_soporte_medico(self):
+        archivo = self.cleaned_data.get("soporte_medico")
+        if not archivo:
+            return archivo
+        validar_archivo_subido(archivo, permitir_vacio=False)
+        return archivo
 
     def clean(self):
         cleaned = super().clean()
@@ -115,39 +122,59 @@ class UsuarioCrearForm(UserCreationForm):
     email = forms.EmailField(required=False)
     first_name = forms.CharField(label="Nombres", required=False)
     last_name = forms.CharField(label="Apellidos", required=False)
-    groups = forms.ModelMultipleChoiceField(
-        label="Roles",
-        queryset=Group.objects.all(),
-        widget=forms.CheckboxSelectMultiple,
-        required=False,
+    group = forms.ModelChoiceField(
+        label="Rol",
+        queryset=Group.objects.order_by("name"),
+        required=True,
+        empty_label=None,
+        help_text="Cada usuario debe tener exactamente un rol de aplicación.",
     )
 
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = ("username", "first_name", "last_name", "email", "groups")
+        fields = ("username", "first_name", "last_name", "email")
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.email = self.cleaned_data["email"]
-        user.first_name = self.cleaned_data["first_name"]
-        user.last_name = self.cleaned_data["last_name"]
+        user.email = self.cleaned_data.get("email") or ""
+        user.first_name = self.cleaned_data.get("first_name") or ""
+        user.last_name = self.cleaned_data.get("last_name") or ""
+        grupo = self.cleaned_data.get("group")
         if commit:
             user.save()
-            self.save_m2m()
+            if grupo:
+                user.groups.set([grupo])
         return user
 
 
 class UsuarioActualizarForm(forms.ModelForm):
-    groups = forms.ModelMultipleChoiceField(
-        label="Roles",
-        queryset=Group.objects.all(),
-        widget=forms.CheckboxSelectMultiple,
-        required=False,
+    group = forms.ModelChoiceField(
+        label="Rol",
+        queryset=Group.objects.order_by("name"),
+        required=True,
+        help_text="Un solo rol por usuario.",
     )
 
     class Meta:
         model = User
-        fields = ("username", "first_name", "last_name", "email", "is_active", "groups")
+        fields = ("username", "first_name", "last_name", "email", "is_active")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["group"].empty_label = None
+        if self.instance.pk:
+            actual = self.instance.groups.first()
+            if actual:
+                self.fields["group"].initial = actual.pk
+            else:
+                self.fields["group"].empty_label = "Seleccione un rol"
+
+    def save(self, commit=True):
+        user = super().save(commit=commit)
+        grupo = self.cleaned_data.get("group")
+        if commit and grupo:
+            user.groups.set([grupo])
+        return user
 
 
 class DocumentoForm(forms.ModelForm):
@@ -158,17 +185,14 @@ class DocumentoForm(forms.ModelForm):
             "nombre": forms.TextInput(attrs={"placeholder": "Descripción opcional del archivo"}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["archivo"].help_text = (
+            f"PDF, Word, Excel o imagen. Tamaño máximo {MAX_UPLOAD_BYTES // (1024 * 1024)} MB."
+        )
+
     def clean_archivo(self):
         archivo = self.cleaned_data.get("archivo")
         if archivo:
-            import os
-            ext = os.path.splitext(archivo.name)[1].lstrip(".").lower()
-            if ext not in EXTENSIONES_PERMITIDAS:
-                raise ValidationError(
-                    f"Formato no permitido (.{ext}). Use: PDF, Word (.doc/.docx) o imagen (PNG/JPG)."
-                )
-            if archivo.size > MAX_UPLOAD_SIZE:
-                raise ValidationError(
-                    f"El archivo supera el límite de 10 MB ({archivo.size // (1024*1024)} MB)."
-                )
+            validar_archivo_subido(archivo, permitir_vacio=False)
         return archivo

@@ -1,9 +1,13 @@
+import mimetypes
+import os
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncMonth
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -17,18 +21,7 @@ from .forms import (
     UsuarioCrearForm,
 )
 from .models import Auditoria, Colaborador, Documento, HistorialEstado, Incapacidad, TipoIncapacidad
-
-
-def _tiene_rol(user, *roles):
-    return user.is_superuser or user.groups.filter(name__in=roles).exists()
-
-
-def puede_gestionar_usuarios(user):
-    return user.is_authenticated and _tiene_rol(user, "Administrador")
-
-
-def puede_editar_operacion(user):
-    return _tiene_rol(user, "Administrador", "Gestion Humana", "Financiera", "Coordinacion")
+from .permissions import puede_editar_operacion, puede_gestionar_usuarios
 
 
 def registrar_auditoria(usuario, accion, detalle=""):
@@ -37,7 +30,11 @@ def registrar_auditoria(usuario, accion, detalle=""):
 
 def _incapacidades_filtradas(request):
     form = IncapacidadFiltroForm(request.GET or None)
-    incapacidades = Incapacidad.objects.select_related("colaborador", "tipo").all()
+    incapacidades = (
+        Incapacidad.objects.select_related("colaborador", "tipo")
+        .annotate(n_documentos=Count("documentos", distinct=True))
+        .all()
+    )
     if form.is_valid():
         q = form.cleaned_data.get("q")
         estado = form.cleaned_data.get("estado")
@@ -142,7 +139,10 @@ def incapacidad_crear(request):
 @login_required
 def incapacidad_detalle(request, pk):
     incapacidad = get_object_or_404(
-        Incapacidad.objects.select_related("colaborador", "tipo", "creado_por", "actualizado_por"), pk=pk
+        Incapacidad.objects.select_related("colaborador", "tipo", "creado_por", "actualizado_por").prefetch_related(
+            "documentos"
+        ),
+        pk=pk,
     )
     return render(
         request,
@@ -322,7 +322,7 @@ def usuario_crear(request):
         if form.is_valid():
             usuario = form.save()
             registrar_auditoria(request.user, "Creacion de usuario", usuario.username)
-            messages.success(request, "Usuario creado. Los roles aplicaran en su proxima autenticacion.")
+            messages.success(request, "Usuario creado. El rol quedará activo en el próximo inicio de sesión.")
             return redirect(reverse("gestion:usuario_lista"))
     else:
         form = UsuarioCrearForm()
@@ -338,7 +338,7 @@ def usuario_editar(request, pk):
         if form.is_valid():
             form.save()
             registrar_auditoria(request.user, "Actualizacion de usuario", usuario.username)
-            messages.success(request, "Usuario actualizado. Los cambios de rol aplican en la proxima autenticacion.")
+            messages.success(request, "Usuario actualizado. El rol quedará activo en el próximo inicio de sesión.")
             return redirect(reverse("gestion:usuario_lista"))
     else:
         form = UsuarioActualizarForm(instance=usuario)
@@ -396,3 +396,77 @@ def documento_eliminar(request, pk):
         registrar_auditoria(request.user, "Documento eliminado", nombre)
         messages.success(request, "Documento eliminado.")
     return redirect(incapacidad)
+
+
+# ── Archivos: servir con sesión iniciada (no depender solo de /media/ en producción) ──
+
+
+@login_required
+def incapacidad_soporte_ver(request, pk):
+    incapacidad = get_object_or_404(Incapacidad, pk=pk)
+    if not incapacidad.soporte_medico:
+        raise Http404("No hay soporte médico adjunto.")
+    f = incapacidad.soporte_medico
+    nombre = os.path.basename(f.name)
+    try:
+        fh = f.open("rb")
+    except FileNotFoundError as exc:
+        raise Http404("El archivo ya no está disponible en el servidor.") from exc
+    content_type, _ = mimetypes.guess_type(nombre)
+    resp = FileResponse(fh, as_attachment=False, filename=nombre)
+    if content_type:
+        resp["Content-Type"] = content_type
+    resp["Content-Disposition"] = f'inline; filename="{nombre}"'
+    return resp
+
+
+@login_required
+def documento_archivo_ver(request, pk):
+    doc = get_object_or_404(Documento, pk=pk)
+    f = doc.archivo
+    nombre = os.path.basename(f.name)
+    try:
+        fh = f.open("rb")
+    except FileNotFoundError as exc:
+        raise Http404("El archivo ya no está disponible en el servidor.") from exc
+    content_type, _ = mimetypes.guess_type(nombre)
+    resp = FileResponse(fh, as_attachment=False, filename=nombre)
+    if content_type:
+        resp["Content-Type"] = content_type
+    resp["Content-Disposition"] = f'inline; filename="{nombre}"'
+    return resp
+
+
+@login_required
+def incapacidad_soporte_descargar(request, pk):
+    """Descarga el soporte médico como adjunto (Content-Disposition: attachment)."""
+    incapacidad = get_object_or_404(Incapacidad, pk=pk)
+    if not incapacidad.soporte_medico:
+        raise Http404("No hay soporte médico adjunto.")
+    f = incapacidad.soporte_medico
+    nombre = os.path.basename(f.name)
+    try:
+        fh = f.open("rb")
+    except FileNotFoundError as exc:
+        raise Http404("El archivo ya no está disponible en el servidor.") from exc
+    content_type, _ = mimetypes.guess_type(nombre)
+    resp = FileResponse(fh, as_attachment=True, filename=nombre)
+    if content_type:
+        resp["Content-Type"] = content_type
+    return resp
+
+
+@login_required
+def documento_archivo_descargar(request, pk):
+    doc = get_object_or_404(Documento, pk=pk)
+    f = doc.archivo
+    nombre = os.path.basename(f.name)
+    try:
+        fh = f.open("rb")
+    except FileNotFoundError as exc:
+        raise Http404("El archivo ya no está disponible en el servidor.") from exc
+    content_type, _ = mimetypes.guess_type(nombre)
+    resp = FileResponse(fh, as_attachment=True, filename=nombre)
+    if content_type:
+        resp["Content-Type"] = content_type
+    return resp

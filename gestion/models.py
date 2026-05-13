@@ -1,9 +1,12 @@
+import os
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
+
 
 
 class TipoIncapacidad(models.Model):
@@ -98,7 +101,11 @@ class Incapacidad(models.Model):
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ESTADO_RECIBIDA)
     soporte_medico = models.FileField(
         upload_to="soportes/%Y/%m/",
-        validators=[FileExtensionValidator(["pdf", "png", "jpg", "jpeg", "doc", "docx"])],
+        validators=[
+            FileExtensionValidator(
+                ["pdf", "png", "jpg", "jpeg", "doc", "docx", "xls", "xlsx"]
+            )
+        ],
         blank=True,
     )
     observaciones = models.TextField(blank=True)
@@ -135,6 +142,35 @@ class Incapacidad(models.Model):
 
     def get_absolute_url(self):
         return reverse("gestion:incapacidad_detalle", args=[self.pk])
+
+    @property
+    def soporte_extension(self):
+        if not self.soporte_medico:
+            return ""
+        _, ext = os.path.splitext(self.soporte_medico.name)
+        return ext.lstrip(".").lower()
+
+    @property
+    def soporte_nombre(self):
+        if not self.soporte_medico:
+            return ""
+        return os.path.basename(self.soporte_medico.name)
+
+    @property
+    def soporte_es_imagen(self):
+        return self.soporte_extension in {"png", "jpg", "jpeg"}
+
+    @property
+    def soporte_es_pdf(self):
+        return self.soporte_extension == "pdf"
+
+    @property
+    def soporte_es_word(self):
+        return self.soporte_extension in {"doc", "docx"}
+
+    @property
+    def soporte_es_excel(self):
+        return self.soporte_extension in {"xls", "xlsx"}
 
     def clean(self):
         errors = {}
@@ -219,7 +255,9 @@ class Documento(models.Model):
     archivo = models.FileField(
         upload_to="documentos/%Y/%m/",
         validators=[
-            FileExtensionValidator(["pdf", "png", "jpg", "jpeg", "doc", "docx"])
+            FileExtensionValidator(
+                ["pdf", "png", "jpg", "jpeg", "doc", "docx", "xls", "xlsx"]
+            )
         ],
     )
     subido_por = models.ForeignKey(
@@ -242,7 +280,6 @@ class Documento(models.Model):
     @property
     def extension(self):
         """Devuelve la extensión en minúsculas, sin el punto."""
-        import os
         _, ext = os.path.splitext(self.archivo.name)
         return ext.lstrip(".").lower()
 
@@ -257,6 +294,10 @@ class Documento(models.Model):
     @property
     def es_word(self):
         return self.extension in {"doc", "docx"}
+
+    @property
+    def es_excel(self):
+        return self.extension in {"xls", "xlsx"}
 
 
 class Auditoria(models.Model):
