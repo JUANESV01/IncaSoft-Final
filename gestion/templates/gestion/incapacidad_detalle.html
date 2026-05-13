@@ -50,7 +50,7 @@
                             <div class="file-attachment-body">
                                 <strong class="file-attachment-name">{{ incapacidad.soporte_nombre }}</strong>
                                 <div class="file-attachment-meta">
-                                    <span>{{ incapacidad.soporte_medico.size|filesizeformat }}</span>
+                                    <span>{{ incapacidad.soporte_size|filesizeformat }}</span>
                                     <span>·</span>
                                     <span>Registrado {{ incapacidad.fecha_creacion|date:"d/m/Y H:i" }}</span>
                                 </div>
@@ -66,7 +66,7 @@
                 </dd>
             </div>
             <div><dt>Código tipo</dt><dd>{{ incapacidad.tipo.codigo }}</dd></div>
-            <div><dt>Registrado por</dt><dd>{{ incapacidad.creado_por.get_full_name|default:incapacidad.creado_por.username|default:"—" }}</dd></div>
+            <div><dt>Registrado por</dt><dd>{% if incapacidad.creado_por %}{{ incapacidad.creado_por.get_full_name|default:incapacidad.creado_por.username }}{% else %}—{% endif %}</dd></div>
             <div><dt>Última actualización</dt><dd>{{ incapacidad.fecha_actualizacion|date:"d/m/Y H:i" }}</dd></div>
         </dl>
         {% if incapacidad.observaciones %}
@@ -142,7 +142,7 @@
                     </td>
                     <td><span class="badge">{{ doc.get_tipo_display }}</span></td>
                     <td>{{ doc.nombre|default:"—" }}</td>
-                    <td><small>{{ doc.archivo.size|filesizeformat }}</small></td>
+                    <td><small>{{ doc.archivo_size|filesizeformat }}</small></td>
                     <td>{{ doc.subido_por.username|default:"—" }}</td>
                     <td><small>{{ doc.fecha_subida|date:"d/m/Y H:i" }}</small></td>
                     <td>

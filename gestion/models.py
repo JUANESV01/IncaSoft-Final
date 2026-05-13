@@ -174,6 +174,13 @@ class Incapacidad(models.Model):
     def soporte_es_excel(self):
         return self.soporte_extension in {"xls", "xlsx"}
 
+    @property
+    def soporte_size(self):
+        try:
+            return self.soporte_medico.size if self.soporte_medico else 0
+        except Exception:
+            return 0
+
     def clean(self):
         errors = {}
         if self.fecha_inicio and self.fecha_fin and self.fecha_fin < self.fecha_inicio:
@@ -314,6 +321,13 @@ class Documento(models.Model):
     @property
     def es_excel(self):
         return self.extension in {"xls", "xlsx"}
+
+    @property
+    def archivo_size(self):
+        try:
+            return self.archivo.size if self.archivo else 0
+        except Exception:
+            return 0
 
 
 class Auditoria(models.Model):
