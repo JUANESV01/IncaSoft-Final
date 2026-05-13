@@ -9,7 +9,7 @@ services:
     plan: starter
     buildCommand: chmod +x build.sh && ./build.sh
     releaseCommand: python manage.py migrate --noinput
-    startCommand: ./start.sh
+    startCommand: bash start.sh
     healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
