@@ -9,7 +9,7 @@ services:
     plan: starter
     buildCommand: chmod +x build.sh && ./build.sh
     releaseCommand: python manage.py migrate --noinput
-    startCommand: gunicorn incasoft.wsgi:application --bind 0.0.0.0:$PORT --timeout 120
+    startCommand: ./start.sh
     healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
