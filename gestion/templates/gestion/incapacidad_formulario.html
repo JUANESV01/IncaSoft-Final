@@ -1,0 +1,121 @@
+{% extends "gestion/base.html" %}
+{% block title %}{{ titulo }} | INCASOFT Solutions{% endblock %}
+{% block content %}
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Gestión de Incapacidades</p>
+        <h1>{{ titulo }}</h1>
+    </div>
+</header>
+
+<form class="panel form-panel" method="post" enctype="multipart/form-data" style="max-width: 1100px;">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+        <div class="message error" style="margin-bottom:18px;">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="incapacidad-form-grid">
+        <!-- Fila 1 -->
+        <div class="field">
+            <label for="{{ form.colaborador.id_for_label }}">{{ form.colaborador.label }}</label>
+            {{ form.colaborador }}
+            {% for error in form.colaborador.errors %}<span class="field-error">⚠ {{ error }}</span>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.tipo.id_for_label }}">{{ form.tipo.label }}</label>
+            {{ form.tipo }}
+            {% for error in form.tipo.errors %}<span class="field-error">⚠ {{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- Fila 2 -->
+        <div class="field">
+            <label for="{{ form.entidad_responsable.id_for_label }}">{{ form.entidad_responsable.label }}</label>
+            {{ form.entidad_responsable }}
+            {% for error in form.entidad_responsable.errors %}<span class="field-error">⚠ {{ error }}</span>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.numero_radicado.id_for_label }}">{{ form.numero_radicado.label }}</label>
+            {{ form.numero_radicado }}
+            {% if not form.instance.pk %}<small class="muted">Se generará automáticamente al guardar.</small>{% endif %}
+            {% for error in form.numero_radicado.errors %}<span class="field-error">⚠ {{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- Fila 3 -->
+        <div class="field">
+            <label for="{{ form.fecha_inicio.id_for_label }}">{{ form.fecha_inicio.label }}</label>
+            {{ form.fecha_inicio }}
+            {% for error in form.fecha_inicio.errors %}<span class="field-error">⚠ {{ error }}</span>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.fecha_fin.id_for_label }}">{{ form.fecha_fin.label }}</label>
+            {{ form.fecha_fin }}
+            {% for error in form.fecha_fin.errors %}<span class="field-error">⚠ {{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- Fila 4 -->
+        <div class="field-doc-side">
+            <label for="{{ form.soporte_medico.id_for_label }}">{{ form.soporte_medico.label }}</label>
+            <div class="doc-upload-zone">
+                <div class="doc-preview-thumb" id="thumb-container">
+                    {% if form.instance.soporte_medico %}
+                        {% if form.instance.soporte_es_imagen %}
+                            <img src="{{ form.instance.soporte_medico.url }}" alt="Vista previa">
+                        {% elif form.instance.soporte_es_pdf %}
+                            📄
+                        {% else %}
+                            📎
+                        {% endif %}
+                    {% else %}
+                        📁
+                    {% endif %}
+                </div>
+                <div class="doc-info">
+                    {{ form.soporte_medico }}
+                    <small class="muted">{{ form.soporte_medico.help_text }}</small>
+                    {% for error in form.soporte_medico.errors %}<span class="field-error">⚠ {{ error }}</span>{% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="field">
+            <label for="{{ form.observaciones.id_for_label }}">{{ form.observaciones.label }}</label>
+            {{ form.observaciones }}
+            {% for error in form.observaciones.errors %}<span class="field-error">⚠ {{ error }}</span>{% endfor %}
+        </div>
+    </div>
+
+    <div class="actions" style="padding-top:16px;border-top:1px solid var(--line);">
+        <button class="button primary" type="submit">💾 Guardar Incapacidad</button>
+        <a class="button ghost" href="{% if form.instance.pk %}{{ form.instance.get_absolute_url }}{% else %}{% url 'gestion:incapacidad_lista' %}{% endif %}">Cancelar</a>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.querySelector('input[type="file"]');
+    const thumbContainer = document.getElementById('thumb-container');
+
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                if (file.type.startsWith('image/')) {
+                    thumbContainer.innerHTML = `<img src="${event.target.result}" alt="Preview">`;
+                } else if (file.type === 'application/pdf') {
+                    thumbContainer.innerHTML = '📄';
+                } else if (file.name.endsWith('.doc') || file.name.endsWith('.docx')) {
+                    thumbContainer.innerHTML = '📝';
+                } else if (file.name.endsWith('.xls') || file.name.endsWith('.xlsx')) {
+                    thumbContainer.innerHTML = '📊';
+                } else {
+                    thumbContainer.innerHTML = '📎';
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+});
+</script>
+{% endblock %}

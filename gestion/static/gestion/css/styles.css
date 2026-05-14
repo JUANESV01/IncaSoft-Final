@@ -447,3 +447,62 @@ textarea { min-height: 96px; resize: vertical; }
   .main { margin: 0; padding: 0; }
   .panel, .metric { box-shadow: none; border: 1px solid #ddd; }
 }
+/* ── FORMULARIO INCAPACIDAD PERSONALIZADO ── */
+.incapacidad-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    margin-bottom: 24px;
+}
+.field-doc-side {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.doc-upload-zone {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    background: var(--surface-2);
+    min-height: 122px; /* Aproximado para 4 filas de textarea */
+}
+.doc-preview-thumb {
+    width: 60px;
+    height: 60px;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.doc-preview-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.doc-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.doc-info input {
+    border: none;
+    padding: 0;
+    background: transparent;
+    min-height: auto;
+}
+.doc-info input:focus {
+    box-shadow: none;
+}
+
+@media (max-width: 780px) {
+  .incapacidad-form-grid { grid-template-columns: 1fr; }
+}

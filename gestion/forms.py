@@ -41,15 +41,17 @@ class IncapacidadForm(forms.ModelForm):
             "colaborador",
             "tipo",
             "entidad_responsable",
+            "numero_radicado",
             "fecha_inicio",
             "fecha_fin",
             "soporte_medico",
             "observaciones",
         ]
         widgets = {
+            "numero_radicado": forms.TextInput(attrs={"readonly": "readonly", "placeholder": "Autogenerado al guardar"}),
             "fecha_inicio": DateInput(),
             "fecha_fin": DateInput(),
-            "observaciones": forms.Textarea(attrs={"rows": 4}),
+            "observaciones": forms.Textarea(attrs={"rows": 4, "placeholder": "Notas adicionales..."}),
         }
 
     def __init__(self, *args, **kwargs):

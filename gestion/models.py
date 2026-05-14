@@ -117,7 +117,7 @@ class Incapacidad(models.Model):
         choices=ENTIDAD_CHOICES,
         default=ENTIDAD_EPS,
     )
-    numero_radicado = models.CharField(max_length=60, blank=True, editable=False)
+    numero_radicado = models.CharField(max_length=60, blank=True)
     fecha_inicio = models.DateField()
     fecha_fin = models.DateField()
     dias = models.PositiveIntegerField(editable=False, default=1)

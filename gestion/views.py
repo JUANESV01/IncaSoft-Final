@@ -149,7 +149,7 @@ def incapacidad_crear(request):
                     form.add_error(None, exc)
     else:
         form = IncapacidadForm()
-    return render(request, "gestion/formulario.html", {"form": form, "titulo": "Registrar incapacidad"})
+    return render(request, "gestion/incapacidad_formulario.html", {"form": form, "titulo": "Registrar incapacidad"})
 
 
 @login_required
