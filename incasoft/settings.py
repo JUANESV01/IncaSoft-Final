@@ -219,7 +219,6 @@ LOGOUT_REDIRECT_URL = 'login'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ── Correo (recuperación de contraseña, notificaciones) ─────────────────────
-# Si define EMAIL_HOST, se usa SMTP salvo que fuerce otro backend con DJANGO_EMAIL_BACKEND.
 EMAIL_HOST = os.environ.get('EMAIL_HOST', '').strip()
 EMAIL_PORT = env_int('EMAIL_PORT', 587)
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '').strip()
@@ -229,15 +228,13 @@ EMAIL_USE_SSL = env_bool('EMAIL_USE_SSL', False)
 EMAIL_TIMEOUT = env_int('EMAIL_TIMEOUT', 25)
 
 if EMAIL_HOST:
-    EMAIL_BACKEND = os.environ.get(
-        'DJANGO_EMAIL_BACKEND',
-        'django.core.mail.backends.smtp.EmailBackend',
-    )
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    if RENDER:
+        print(f"DEBUG: Usando SMTP con host {EMAIL_HOST} y puerto {EMAIL_PORT}")
 else:
-    EMAIL_BACKEND = os.environ.get(
-        'DJANGO_EMAIL_BACKEND',
-        'django.core.mail.backends.console.EmailBackend',
-    )
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    if RENDER:
+        print("DEBUG: EMAIL_HOST no detectado, usando BACKEND DE CONSOLA")
 
 DEFAULT_FROM_EMAIL = os.environ.get(
     'DJANGO_DEFAULT_FROM_EMAIL',
