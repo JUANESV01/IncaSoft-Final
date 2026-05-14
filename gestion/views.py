@@ -79,6 +79,8 @@ def _incapacidades_filtradas_desde_querystring(query_string: str):
 
 @login_required
 def dashboard(request):
+    from django.utils import timezone
+    
     incapacidades = Incapacidad.objects.select_related("colaborador", "tipo")
     conteo_estado = {estado: 0 for estado, _label in Incapacidad.ESTADO_CHOICES}
     for item in incapacidades.values("estado").annotate(total=Count("id")):
@@ -90,6 +92,21 @@ def dashboard(request):
     historial = HistorialEstado.objects.select_related("incapacidad", "usuario", "incapacidad__colaborador")[:6]
     tipos = TipoIncapacidad.objects.annotate(total=Count("incapacidades")).order_by("-total")
 
+    # Cálculos para métricas profesionales
+    hoy = timezone.now()
+    activas_count = incapacidades.exclude(estado__in=[Incapacidad.ESTADO_PAGADA, Incapacidad.ESTADO_RECHAZADA]).count()
+    pendientes_count = incapacidades.filter(estado=Incapacidad.ESTADO_RECIBIDA).count()
+    dias_mes = incapacidades.filter(
+        fecha_inicio__month=hoy.month, 
+        fecha_inicio__year=hoy.year
+    ).aggregate(total=Sum("dias"))["total"] or 0
+    
+    # Tasa de trámite (progreso de casos)
+    if total > 0:
+        tasa_tramite = int(((total - pendientes_count) / total) * 100)
+    else:
+        tasa_tramite = 0
+
     # Datos para gráficos
     grafico_estados_labels = [str(label) for _value, label in Incapacidad.ESTADO_CHOICES]
     grafico_estados_data = [conteo_estado.get(value, 0) for value, _label in Incapacidad.ESTADO_CHOICES]
@@ -98,7 +115,10 @@ def dashboard(request):
         "total_incapacidades": total,
         "total_colaboradores": Colaborador.objects.count(),
         "dias_reportados": dias,
-        "abiertas": incapacidades.exclude(estado__in=[Incapacidad.ESTADO_PAGADA, Incapacidad.ESTADO_RECHAZADA]).count(),
+        "activas_count": activas_count,
+        "pendientes_count": pendientes_count,
+        "dias_mes": dias_mes,
+        "tasa_tramite": tasa_tramite,
         "conteo_estado": conteo_estado,
         "grafico_estados_labels": json.dumps(grafico_estados_labels),
         "grafico_estados_data": json.dumps(grafico_estados_data),
