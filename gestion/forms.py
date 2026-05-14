@@ -41,7 +41,6 @@ class IncapacidadForm(forms.ModelForm):
             "colaborador",
             "tipo",
             "entidad_responsable",
-            "numero_radicado",
             "fecha_inicio",
             "fecha_fin",
             "soporte_medico",
@@ -59,7 +58,6 @@ class IncapacidadForm(forms.ModelForm):
         self.fields["tipo"].queryset = TipoIncapacidad.objects.filter(activo=True)
         self.fields["colaborador"].empty_label = "Seleccione un colaborador"
         self.fields["tipo"].empty_label = "Seleccione el tipo"
-        self.fields["entidad_responsable"].help_text = "EPS, ARL o entidad responsable del cobro."
         self.fields["soporte_medico"].help_text = (
             f"PDF, Word, Excel o imagen. Tamaño máximo {MAX_UPLOAD_BYTES // (1024 * 1024)} MB."
         )
@@ -73,10 +71,7 @@ class IncapacidadForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        tipo = cleaned.get("tipo")
-        entidad = cleaned.get("entidad_responsable")
-        if tipo and not entidad:
-            cleaned["entidad_responsable"] = tipo.entidad_responsable
+        # El radicado se genera automáticamente en el save() del modelo
         return cleaned
 
 

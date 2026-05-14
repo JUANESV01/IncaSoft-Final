@@ -1,4 +1,6 @@
 import os
+import random
+import string
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -13,7 +15,7 @@ class TipoIncapacidad(models.Model):
     ENTIDAD_CHOICES = [
         ("EPS", "EPS"),
         ("ARL", "ARL"),
-        ("EMPRESA", "Empresa"),
+        ("OTRO", "Otro"),
     ]
 
     nombre = models.CharField(max_length=120, unique=True)
@@ -91,10 +93,31 @@ class Incapacidad(models.Model):
         ESTADO_RECHAZADA: [],
     }
 
+    ENTIDAD_EPS = "EPS"
+    ENTIDAD_ARL = "ARL"
+    ENTIDAD_OTRO = "OTRO"
+
+    ENTIDAD_CHOICES = [
+        (ENTIDAD_EPS, "EPS"),
+        (ENTIDAD_ARL, "ARL"),
+        (ENTIDAD_OTRO, "Otro"),
+    ]
+
+    # Prefijos para radicado automático
+    _RADICADO_PREFIJO = {
+        ENTIDAD_EPS: "EPS",
+        ENTIDAD_ARL: "ARL",
+        ENTIDAD_OTRO: "OTR",
+    }
+
     colaborador = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="incapacidades")
     tipo = models.ForeignKey(TipoIncapacidad, on_delete=models.PROTECT, related_name="incapacidades")
-    entidad_responsable = models.CharField(max_length=120)
-    numero_radicado = models.CharField(max_length=60, blank=True)
+    entidad_responsable = models.CharField(
+        max_length=20,
+        choices=ENTIDAD_CHOICES,
+        default=ENTIDAD_EPS,
+    )
+    numero_radicado = models.CharField(max_length=60, blank=True, editable=False)
     fecha_inicio = models.DateField()
     fecha_fin = models.DateField()
     dias = models.PositiveIntegerField(editable=False, default=1)
@@ -181,6 +204,35 @@ class Incapacidad(models.Model):
         except Exception:
             return 0
 
+    @classmethod
+    def _generar_radicado(cls, entidad: str) -> str:
+        """Genera un número de radicado único con formato PREFIJO+correlativo+sufijo.
+        Ejemplo: EPS1ABCD, ARL3W123, OTR2MN90.
+        Si hay colisiones, el sistema intenta con números y luego aumenta la longitud."""
+        prefijo = cls._RADICADO_PREFIJO.get(entidad, "OTR")
+        correlativo = cls.objects.filter(
+            numero_radicado__startswith=prefijo
+        ).count() + 1
+        
+        pool = string.ascii_uppercase
+        intentos = 0
+        longitud = 4
+        
+        while True:
+            sufijo = "".join(random.choices(pool, k=longitud))
+            candidato = f"{prefijo}{correlativo}{sufijo}"
+            if not cls.objects.filter(numero_radicado=candidato).exists():
+                return candidato
+            
+            intentos += 1
+            if intentos == 10:
+                # Si fallan 10 intentos con solo letras, incluimos números
+                pool = string.ascii_uppercase + string.digits
+            if intentos == 20:
+                # Si fallan 20 intentos, aumentamos la longitud del sufijo
+                longitud += 1
+                intentos = 10 # Reiniciamos para seguir probando con números
+
     def clean(self):
         errors = {}
         if self.fecha_inicio and self.fecha_fin and self.fecha_fin < self.fecha_inicio:
@@ -205,14 +257,11 @@ class Incapacidad(models.Model):
             raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
+        is_new = self.pk is None
         if self.fecha_inicio and self.fecha_fin:
             self.dias = (self.fecha_fin - self.fecha_inicio).days + 1
-        if self.tipo and not self.entidad_responsable:
-            self.entidad_responsable = self.tipo.entidad_responsable
-            
-        # Cumplimiento de requerimientos (PDF):
-        # EG: primeros 2 días los paga la empresa, el resto la EPS.
-        # EP, AT, Maternidad, Paternidad: 100% desde el primer día la Entidad.
+
+        # Cálculo días empresa / entidad
         if self.tipo:
             if self.tipo.codigo == "EG":
                 self.dias_empresa = min(2, self.dias)
@@ -220,6 +269,10 @@ class Incapacidad(models.Model):
             else:
                 self.dias_empresa = 0
                 self.dias_entidad = self.dias
+
+        # Radicado automático solo al crear (no sobreescribe si ya existe)
+        if is_new and not self.numero_radicado:
+            self.numero_radicado = self._generar_radicado(self.entidad_responsable)
 
         super().save(*args, **kwargs)
 
