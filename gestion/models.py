@@ -145,6 +145,14 @@ class Incapacidad(models.Model):
 
     colaborador = models.ForeignKey(Colaborador, on_delete=models.PROTECT, related_name="incapacidades")
     tipo = models.ForeignKey(TipoIncapacidad, on_delete=models.PROTECT, related_name="incapacidades")
+    prorroga_de = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="siguientes",
+        verbose_name="Prórroga de",
+    )
     entidad_responsable = models.CharField(
         max_length=20,
         choices=ENTIDAD_CHOICES,
@@ -306,6 +314,17 @@ class Incapacidad(models.Model):
         # Radicado automático solo al crear (no sobreescribe si ya existe)
         if is_new and not self.numero_radicado:
             self.numero_radicado = self._generar_radicado(self.entidad_responsable)
+
+        # Detección automática de prórrogas
+        if is_new and not self.prorroga_de and self.fecha_inicio:
+            from datetime import timedelta
+            # Buscamos una incapacidad que terminó justo el día anterior
+            anterior = Incapacidad.objects.filter(
+                colaborador=self.colaborador,
+                fecha_fin=self.fecha_inicio - timedelta(days=1)
+            ).order_by("-fecha_fin").first()
+            if anterior:
+                self.prorroga_de = anterior
 
         super().save(*args, **kwargs)
 

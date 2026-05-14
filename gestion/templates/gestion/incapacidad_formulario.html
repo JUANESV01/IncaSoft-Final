@@ -71,6 +71,8 @@
                 </div>
                 <div class="doc-info">
                     {{ form.soporte_medico }}
+                    <div id="ai-status" style="margin-top: 5px;"></div>
+                    <button type="button" id="btn-analizar-ia" class="button ghost" style="font-size: 11px; padding: 4px 8px; min-height: auto; margin-top: 5px;">✨ Analizar con IA</button>
                     <small class="muted">{{ form.soporte_medico.help_text }}</small>
                     {% for error in form.soporte_medico.errors %}<span class="field-error">⚠ {{ error }}</span>{% endfor %}
                 </div>
@@ -93,6 +95,8 @@
 document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.querySelector('input[type="file"]');
     const thumbContainer = document.getElementById('thumb-container');
+    const btnAnalizar = document.getElementById('btn-analizar-ia');
+    const aiStatus = document.getElementById('ai-status');
 
     if (fileInput) {
         fileInput.addEventListener('change', function(e) {
@@ -105,15 +109,65 @@ document.addEventListener('DOMContentLoaded', function() {
                     thumbContainer.innerHTML = `<img src="${event.target.result}" alt="Preview">`;
                 } else if (file.type === 'application/pdf') {
                     thumbContainer.innerHTML = '📄';
-                } else if (file.name.endsWith('.doc') || file.name.endsWith('.docx')) {
-                    thumbContainer.innerHTML = '📝';
-                } else if (file.name.endsWith('.xls') || file.name.endsWith('.xlsx')) {
-                    thumbContainer.innerHTML = '📊';
                 } else {
-                    thumbContainer.innerHTML = '📎';
+                    thumbContainer.innerHTML = '📁';
                 }
             };
             reader.readAsDataURL(file);
+        });
+
+        btnAnalizar.addEventListener('click', function() {
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Por favor selecciona un archivo primero.");
+                return;
+            }
+
+            aiStatus.innerHTML = '<small class="muted">⏳ Analizando con IA...</small>';
+            btnAnalizar.disabled = true;
+
+            const formData = new FormData();
+            formData.append('archivo', file);
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+            fetch('{% url "gestion:incapacidad_analizar_documento" %}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    aiStatus.innerHTML = `<small class="field-error">⚠ Error: ${data.error}</small>`;
+                } else {
+                    aiStatus.innerHTML = '<small style="color:var(--success)">✅ Análisis completado</small>';
+                    
+                    // Autocompletar campos
+                    if (data.fecha_inicio) document.querySelector('[name="fecha_inicio"]').value = data.fecha_inicio;
+                    if (data.fecha_fin) document.querySelector('[name="fecha_fin"]').value = data.fecha_fin;
+                    
+                    // Mapear tipo sugerido (buscando coincidencia en los códigos)
+                    if (data.tipo_sugerido) {
+                        const selectTipo = document.querySelector('[name="tipo"]');
+                        for (let i = 0; i < selectTipo.options.length; i++) {
+                            if (selectTipo.options[i].text.includes(`(${data.tipo_sugerido})`)) {
+                                selectTipo.selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (data.resumen) {
+                        const obs = document.querySelector('[name="observaciones"]');
+                        obs.value = (obs.value ? obs.value + "\n" : "") + "Análisis IA: " + data.resumen;
+                    }
+                }
+            })
+            .catch(err => {
+                aiStatus.innerHTML = '<small class="field-error">⚠ Error de conexión</small>';
+            })
+            .finally(() => {
+                btnAnalizar.disabled = false;
+            });
         });
     }
 });

@@ -37,10 +37,8 @@
         <div class="panel-head">
             <h2>Estados del ciclo de vida</h2>
         </div>
-        <div class="state-flow">
-            {% for estado, total in conteo_estado.items %}
-                <span class="state-pill state-{{ estado|lower }}">{{ estado|title }} <strong>{{ total }}</strong></span>
-            {% endfor %}
+        <div style="max-height: 280px; display: flex; justify-content: center;">
+            <canvas id="chartEstados"></canvas>
         </div>
     </article>
     <article class="panel">
@@ -59,6 +57,44 @@
         </div>
     </article>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('chartEstados').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ grafico_estados_labels|safe }},
+            datasets: [{
+                data: {{ grafico_estados_data|safe }},
+                backgroundColor: [
+                    '#1A5F6E', // Recibida (Teal)
+                    '#1A7A4A', // Transcrita (Success)
+                    '#C8902A', // Cobrada (Gold)
+                    '#0C2A2E', // Pagada (Night)
+                    '#BF3B2B'  // Rechazada (Danger)
+                ],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        font: { family: 'DM Sans', size: 12 },
+                        padding: 20
+                    }
+                }
+            },
+            cutout: '65%'
+        }
+    });
+});
+</script>
 
 <section class="split">
     <article class="panel">

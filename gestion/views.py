@@ -9,8 +9,10 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncMonth
-from django.http import FileResponse, Http404, HttpRequest, JsonResponse, QueryDict
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
+import openpyxl
+from openpyxl.styles import Font, Alignment, PatternFill
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
@@ -24,7 +26,7 @@ from .forms import (
     UsuarioActualizarForm,
     UsuarioCrearForm,
 )
-from .gemini_service import construir_resumen_agregado, generar_analisis_gemini
+from .gemini_service import construir_resumen_agregado, generar_analisis_gemini, analizar_documento_incapacidad
 from .models import Auditoria, Colaborador, Documento, HistorialEstado, Incapacidad, TipoIncapacidad
 from .permissions import puede_editar_operacion, puede_gestionar_usuarios
 
@@ -88,17 +90,82 @@ def dashboard(request):
     historial = HistorialEstado.objects.select_related("incapacidad", "usuario", "incapacidad__colaborador")[:6]
     tipos = TipoIncapacidad.objects.annotate(total=Count("incapacidades")).order_by("-total")
 
+    # Datos para gráficos
+    grafico_estados_labels = [str(label) for _value, label in Incapacidad.ESTADO_CHOICES]
+    grafico_estados_data = [conteo_estado.get(value, 0) for value, _label in Incapacidad.ESTADO_CHOICES]
+
     contexto = {
         "total_incapacidades": total,
         "total_colaboradores": Colaborador.objects.count(),
         "dias_reportados": dias,
         "abiertas": incapacidades.exclude(estado__in=[Incapacidad.ESTADO_PAGADA, Incapacidad.ESTADO_RECHAZADA]).count(),
         "conteo_estado": conteo_estado,
+        "grafico_estados_labels": json.dumps(grafico_estados_labels),
+        "grafico_estados_data": json.dumps(grafico_estados_data),
         "recientes": recientes,
         "historial": historial,
         "tipos": tipos,
     }
     return render(request, "gestion/dashboard.html", contexto)
+
+
+@login_required
+def incapacidad_exportar_excel(request):
+    """Exporta la lista filtrada de incapacidades a un archivo Excel (.xlsx)."""
+    form, incapacidades = _incapacidades_filtradas(request)
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Incapacidades"
+    
+    # Encabezados
+    headers = [
+        "Radicado", "Colaborador", "Identificación", "Tipo", "Entidad", 
+        "Inicio", "Fin", "Días Totales", "Días Empresa", "Días Entidad", "Estado"
+    ]
+    ws.append(headers)
+    
+    # Estilo encabezados
+    header_fill = PatternFill(start_color="1A5F6E", end_color="1A5F6E", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+
+    # Datos
+    for inc in incapacidades:
+        ws.append([
+            inc.numero_radicado,
+            inc.colaborador.nombre_completo,
+            inc.colaborador.numero_identificacion,
+            inc.tipo.nombre,
+            inc.get_entidad_responsable_display(),
+            inc.fecha_inicio.strftime("%d/%m/%Y"),
+            inc.fecha_fin.strftime("%d/%m/%Y"),
+            inc.dias,
+            inc.dias_empresa,
+            inc.dias_entidad,
+            inc.get_estado_display()
+        ])
+
+    # Ajuste de columnas
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except: pass
+        ws.column_dimensions[column_letter].width = max_length + 2
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = 'attachment; filename="Reporte_Incapacidades.xlsx"'
+    wb.save(response)
+    return response
 
 
 @login_required
@@ -150,6 +217,28 @@ def incapacidad_crear(request):
     else:
         form = IncapacidadForm()
     return render(request, "gestion/incapacidad_formulario.html", {"form": form, "titulo": "Registrar incapacidad"})
+
+
+@login_required
+@require_POST
+def incapacidad_analizar_documento(request):
+    """Endpoint AJAX para analizar un documento con Gemini."""
+    if not request.FILES.get("archivo"):
+        return JsonResponse({"error": "No se subió ningún archivo"}, status=400)
+    
+    archivo = request.FILES["archivo"]
+    content = archivo.read()
+    mime = mimetypes.guess_type(archivo.name)[0] or "application/octet-stream"
+    
+    try:
+        resultado = analizar_documento_incapacidad(
+            content,
+            mime,
+            api_key=settings.GEMINI_API_KEY
+        )
+        return JsonResponse(resultado)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
 
 @login_required

@@ -6,9 +6,12 @@
         <p class="eyebrow">Operación diaria</p>
         <h1>Incapacidades</h1>
     </div>
-    {% if puede_editar %}
-        <a class="button primary" href="{% url 'gestion:incapacidad_crear' %}">＋ Nueva incapacidad</a>
-    {% endif %}
+    <div class="actions">
+        {% if puede_editar %}
+            <a class="button primary" href="{% url 'gestion:incapacidad_crear' %}">＋ Nueva incapacidad</a>
+        {% endif %}
+        <a class="button ghost" href="{% url 'gestion:incapacidad_exportar_excel' %}?{{ request.GET.urlencode }}">📊 Exportar Excel</a>
+    </div>
 </header>
 
 {# ── Filtros ── #}

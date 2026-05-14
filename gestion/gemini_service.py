@@ -221,3 +221,57 @@ Datos agregados:
         "Ningún modelo de Gemini configurado respondió. "
         "Ajuste GEMINI_MODEL o GEMINI_MODEL_FALLBACKS según los modelos disponibles en Google AI Studio."
     ) from ultimo_error
+
+
+def analizar_documento_incapacidad(
+    file_content: bytes,
+    file_mime: str,
+    *,
+    api_key: str,
+    model_name: str | None = None,
+) -> dict[str, Any]:
+    """
+    Envía un archivo (imagen o PDF) a Gemini para extraer datos de la incapacidad.
+    Retorna un diccionario con: fecha_inicio, fecha_fin, tipo_sugerido, confianza.
+    """
+    import json as py_json
+    import google.generativeai as genai
+
+    if not api_key:
+        return {"error": "API Key no configurada"}
+
+    genai.configure(api_key=api_key)
+    model_name = (model_name or getattr(settings, "GEMINI_MODEL", "gemini-1.5-flash")).strip()
+    model = genai.GenerativeModel(model_name)
+
+    prompt = """Analiza este documento médico de incapacidad en Colombia y extrae la siguiente información en formato JSON puro (sin bloques de código markdown):
+    {
+      "fecha_inicio": "YYYY-MM-DD",
+      "fecha_fin": "YYYY-MM-DD",
+      "tipo_sugerido": "EG|EP|AT|LM|LP",
+      "resumen": "breve resumen del diagnostico o motivo",
+      "confianza": 0.0 a 1.0
+    }
+    Tipos: EG (Enfermedad General), EP (Enfermedad Profesional), AT (Accidente Trabajo), LM (Maternidad), LP (Paternidad).
+    Si no puedes determinar algo, deja el valor como null. No inventes datos.
+    Responde ÚNICAMENTE el JSON.
+    """
+
+    try:
+        # Preparar el archivo para Gemini
+        content = [
+            {"mime_type": file_mime, "data": file_content},
+            prompt
+        ]
+        response = model.generate_content(content)
+        texto = response.text.strip()
+        # Limpiar posibles bloques de código markdown
+        if texto.startswith("```"):
+            texto = texto.split("```")[1]
+            if texto.startswith("json"):
+                texto = texto[4:].strip()
+            texto = texto.strip()
+        
+        return py_json.loads(texto)
+    except Exception as e:
+        return {"error": str(e)}
