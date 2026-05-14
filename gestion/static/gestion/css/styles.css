@@ -392,37 +392,53 @@ textarea { min-height: 96px; resize: vertical; }
 .login-field label { font-size: 13px; font-weight: 700; color: var(--ink-2); }
 .login-demo { padding: 12px 14px; background: var(--surface-2); border-radius: var(--radius-sm); border-left: 3px solid var(--teal); font-size: 12px; color: var(--muted); line-height: 1.6; }
 
-/* ── Adjuntos en detalle ── */
+/* ── Adjuntos en detalle (Rediseño Vertical) ── */
 .file-attachment {
   display: flex;
+  flex-direction: column; /* Forzamos vertical para evitar choques */
   gap: 16px;
-  align-items: flex-start;
-  padding: 20px;
+  align-items: stretch;
+  padding: 24px;
   background: var(--surface-2);
   border-radius: var(--radius);
   border: 1px solid var(--line);
   max-width: 100%;
   box-shadow: inset 0 1px 3px rgba(0,0,0,.02);
+  text-align: center;
 }
-.file-attachment-icon { font-size: 2rem; line-height: 1; flex-shrink: 0; }
-.file-attachment-body { min-width: 0; flex: 1; }
+.file-attachment-icon { 
+    font-size: 3rem; 
+    line-height: 1; 
+    margin-bottom: 8px;
+}
+.file-attachment-body { 
+    min-width: 0; 
+    width: 100%;
+}
 .file-attachment-name { 
     display: block; 
     font-weight: 700;
     color: var(--night);
     word-break: break-all; 
-    margin-bottom: 8px; 
+    margin-bottom: 10px;
+    font-size: 16px;
 }
-.file-attachment-meta { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+.file-attachment-meta { 
+    font-size: 13px; 
+    color: var(--muted); 
+    margin-bottom: 20px; 
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+}
 .file-attachment-actions { 
     display: flex; 
-    flex-wrap: wrap; 
-    gap: 10px; 
+    flex-direction: column; /* Botones uno sobre otro */
+    gap: 12px; 
 }
 .file-attachment-actions .button {
-    flex: 1 1 auto; /* Permite que los botones crezcan o se apilen */
-    min-width: 120px;
+    width: 100%; /* Botones de ancho completo */
     justify-content: center;
+    min-height: 44px;
 }
 
 /* ── Celdas de acciones en tablas ── */
