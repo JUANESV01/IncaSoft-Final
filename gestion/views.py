@@ -507,6 +507,12 @@ def usuario_crear(request):
 @user_passes_test(puede_gestionar_usuarios)
 def usuario_editar(request, pk):
     usuario = get_object_or_404(User, pk=pk)
+
+    # Protección absoluta para el admin
+    if usuario.username == 'admin':
+        messages.error(request, "El usuario administrador principal no puede ser editado por seguridad del sistema.")
+        return redirect('gestion:usuario_lista')
+
     if request.method == "POST":
         form = UsuarioActualizarForm(request.POST, instance=usuario)
         if form.is_valid():

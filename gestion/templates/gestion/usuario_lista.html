@@ -47,7 +47,11 @@
                         <span class="status muted-status">Inactivo</span>
                     {% endif %}
                 </td>
-                <td><a class="table-action" href="{% url 'gestion:usuario_editar' usuario.pk %}">Editar</a></td>
+                <td>
+                    {% if usuario.username != 'admin' %}
+                        <a class="table-action" href="{% url 'gestion:usuario_editar' usuario.pk %}">Editar</a>
+                    {% endif %}
+                </td>
             </tr>
         {% empty %}
             <tr><td colspan="6" class="empty" style="text-align:center;padding:24px;">No hay usuarios registrados.</td></tr>
