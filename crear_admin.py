@@ -43,19 +43,27 @@ def main() -> int:
                 print(f"✅ Tipo de Incapacidad creado: {t['nombre']} ({t['codigo']})")
 
     def crear_usuario(username, password, group_name=None, is_superuser=False):
-        if User.objects.filter(username=username).exists():
-            print(f"ℹ️ El usuario '{username}' ya existe.")
-            return
-        if is_superuser:
-            user = User.objects.create_superuser(username, f"{username}@incasoft.com", password)
-            print(f"✅ Superusuario '{username}' creado.")
+        user = User.objects.filter(username=username).first()
+        if user:
+            print(f"ℹ️ El usuario '{username}' ya existe. Actualizando contraseña...")
+            user.set_password(password)
+            user.is_active = True
+            if is_superuser:
+                user.is_staff = True
+                user.is_superuser = True
+            user.save()
         else:
-            user = User.objects.create_user(username, f"{username}@incasoft.com", password)
-            print(f"✅ Usuario '{username}' creado.")
+            if is_superuser:
+                user = User.objects.create_superuser(username, f"{username}@incasoft.com", password)
+                print(f"✅ Superusuario '{username}' creado.")
+            else:
+                user = User.objects.create_user(username, f"{username}@incasoft.com", password)
+                print(f"✅ Usuario '{username}' creado.")
+        
         if group_name:
             grupo, _ = Group.objects.get_or_create(name=group_name)
             user.groups.add(grupo)
-            print(f"   - Asignado al grupo: {group_name}")
+            print(f"   - Asegurado en grupo: {group_name}")
 
     try:
         # Mismos nombres de grupo que seed_demo.py (sin tilde en "Gestion")
