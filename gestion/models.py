@@ -4,11 +4,10 @@ import string
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import FileExtensionValidator
+from django.core.validators import FileExtensionValidator, RegexValidator
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
-
 
 
 class TipoIncapacidad(models.Model):
@@ -18,7 +17,16 @@ class TipoIncapacidad(models.Model):
         ("OTRO", "Otro"),
     ]
 
-    nombre = models.CharField(max_length=120, unique=True)
+    nombre = models.CharField(
+        max_length=120,
+        unique=True,
+        validators=[
+            RegexValidator(
+                regex=r"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$",
+                message="El nombre debe contener solo letras y espacios.",
+            )
+        ],
+    )
     codigo = models.CharField(max_length=20, unique=True)
     entidad_responsable = models.CharField(max_length=20, choices=ENTIDAD_CHOICES)
     dias_maximos = models.PositiveIntegerField(default=180)
@@ -43,14 +51,39 @@ class Colaborador(models.Model):
     ]
 
     tipo_documento = models.CharField(max_length=3, choices=DOCUMENTO_CHOICES, default="CC")
-    numero_identificacion = models.CharField(max_length=30, unique=True)
+    numero_identificacion = models.CharField(
+        max_length=30,
+        unique=True,
+        validators=[
+            RegexValidator(
+                regex=r"^\d+$", message="El número de identificación debe contener solo números."
+            )
+        ],
+    )
     nombres = models.CharField(max_length=90)
     apellidos = models.CharField(max_length=90)
     correo = models.EmailField(blank=True)
-    telefono = models.CharField(max_length=25, blank=True)
+    telefono = models.CharField(
+        max_length=10,
+        blank=True,
+        validators=[
+            RegexValidator(
+                regex=r"^\d{10}$", message="El teléfono debe tener exactamente 10 dígitos numéricos."
+            )
+        ],
+    )
     cargo = models.CharField(max_length=90)
     area = models.CharField(max_length=90)
-    eps = models.CharField("EPS", max_length=120)
+    eps = models.CharField(
+        "EPS",
+        max_length=120,
+        validators=[
+            RegexValidator(
+                regex=r"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$",
+                message="El nombre de la EPS debe contener solo letras y espacios.",
+            )
+        ],
+    )
     arl = models.CharField("ARL", max_length=120, blank=True)
     activo = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)

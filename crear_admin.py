@@ -62,6 +62,7 @@ def main() -> int:
         crear_usuario("admin", "IncaSoft2026*", is_superuser=True)
         crear_usuario("gerente", "IncaSoft2026*", group_name="Gerente")
         crear_usuario("humana", "IncaSoft2026*", group_name="Gestion Humana")
+        crear_usuario("operador", "IncaSoft2026*", group_name="Operador")
         
         print("\nVerificando Tipos de Incapacidad requeridos...")
         crear_tipos_incapacidad()

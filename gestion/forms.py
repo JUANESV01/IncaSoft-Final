@@ -166,6 +166,13 @@ class UsuarioActualizarForm(forms.ModelForm):
             else:
                 self.fields["group"].empty_label = "Seleccione un rol"
 
+    def clean_is_active(self):
+        is_active = self.cleaned_data.get("is_active")
+        # Si el usuario que estamos editando es el administrador principal, no permitimos desactivarlo.
+        if self.instance.username == "admin" and not is_active:
+            raise ValidationError("No se puede desactivar al usuario administrador principal para evitar el bloqueo del sistema.")
+        return is_active
+
     def save(self, commit=True):
         user = super().save(commit=commit)
         grupo = self.cleaned_data.get("group")
