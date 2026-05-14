@@ -395,20 +395,48 @@ textarea { min-height: 96px; resize: vertical; }
 /* ── Adjuntos en detalle ── */
 .file-attachment {
   display: flex;
-  gap: 14px;
+  gap: 16px;
   align-items: flex-start;
-  padding: 14px 16px;
+  padding: 20px;
   background: var(--surface-2);
   border-radius: var(--radius);
   border: 1px solid var(--line);
   max-width: 100%;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.02);
 }
-.file-attachment-icon { font-size: 1.75rem; line-height: 1; flex-shrink: 0; }
+.file-attachment-icon { font-size: 2rem; line-height: 1; flex-shrink: 0; }
 .file-attachment-body { min-width: 0; flex: 1; }
-.file-attachment-name { display: block; word-break: break-word; margin-bottom: 6px; }
-.file-attachment-meta { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
-.file-attachment-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.text-center { text-align: center; }
+.file-attachment-name { 
+    display: block; 
+    font-weight: 700;
+    color: var(--night);
+    word-break: break-all; 
+    margin-bottom: 8px; 
+}
+.file-attachment-meta { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+.file-attachment-actions { 
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 10px; 
+}
+.file-attachment-actions .button {
+    flex: 1 1 auto; /* Permite que los botones crezcan o se apilen */
+    min-width: 120px;
+    justify-content: center;
+}
+
+/* ── Celdas de acciones en tablas ── */
+.actions-cell {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+    align-items: center;
+    min-width: 180px; /* Garantiza espacio para Ver/Descargar/Borrar */
+}
+.table-action {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
 
 /* ── Reportes: salida IA (Gemini) ── */
 .ia-reporte-panel .ia-reporte-salida {

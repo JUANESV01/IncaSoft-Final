@@ -125,39 +125,38 @@
                     <th>Tamaño</th>
                     <th>Subido por</th>
                     <th>Fecha de subida</th>
-                    <th></th>
-                    {% if puede_editar %}<th></th>{% endif %}
+                    <th style="width:1%;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 {% for doc in incapacidad.documentos.all %}
                 <tr>
                     <td>
-                        {% if doc.es_imagen %}🖼️
-                        {% elif doc.es_pdf %}📄
-                        {% elif doc.es_word %}📝
-                        {% elif doc.es_excel %}📊
-                        {% else %}📁{% endif %}
-                        <strong>{{ doc.archivo.name|cut:"documentos/" }}</strong>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            {% if doc.es_imagen %}🖼️
+                            {% elif doc.es_pdf %}📄
+                            {% elif doc.es_word %}📝
+                            {% elif doc.es_excel %}📊
+                            {% else %}📁{% endif %}
+                            <strong style="word-break:break-all;">{{ doc.archivo.name|cut:"documentos/" }}</strong>
+                        </div>
                     </td>
                     <td><span class="badge">{{ doc.get_tipo_display }}</span></td>
                     <td>{{ doc.nombre|default:"—" }}</td>
                     <td><small>{{ doc.archivo_size|filesizeformat }}</small></td>
                     <td>{{ doc.subido_por.username|default:"—" }}</td>
                     <td><small>{{ doc.fecha_subida|date:"d/m/Y H:i" }}</small></td>
-                    <td>
+                    <td class="actions-cell">
                         <a class="table-action" href="{% url 'gestion:documento_archivo_ver' doc.pk %}" target="_blank" rel="noopener">Ver</a>
                         <a class="table-action" href="{% url 'gestion:documento_archivo_descargar' doc.pk %}">Descargar</a>
+                        {% if puede_editar %}
+                            <form method="post" action="{% url 'gestion:documento_eliminar' doc.pk %}"
+                                  onsubmit="return confirm('¿Eliminar este documento?');" style="display:inline;">
+                                {% csrf_token %}
+                                <button class="button ghost" type="submit" style="min-height:30px; padding:4px 10px; font-size:11px; color:var(--danger); border-color:rgba(191,59,43,.2);">🗑 Eliminar</button>
+                            </form>
+                        {% endif %}
                     </td>
-                    {% if puede_editar %}
-                    <td>
-                        <form method="post" action="{% url 'gestion:documento_eliminar' doc.pk %}"
-                              onsubmit="return confirm('¿Eliminar este documento?');">
-                            {% csrf_token %}
-                            <button class="button ghost" type="submit" style="padding:4px 10px;font-size:.8rem;color:#e53e3e;">🗑 Eliminar</button>
-                        </form>
-                    </td>
-                    {% endif %}
                 </tr>
                 {% endfor %}
             </tbody>
