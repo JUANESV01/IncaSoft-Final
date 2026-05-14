@@ -81,52 +81,48 @@ def _incapacidades_filtradas_desde_querystring(query_string: str):
 @login_required
 def dashboard(request):
     from django.utils import timezone
+    import json
     
-    incapacidades = Incapacidad.objects.select_related("colaborador", "tipo")
-    conteo_estado = {estado: 0 for estado, _label in Incapacidad.ESTADO_CHOICES}
-    for item in incapacidades.values("estado").annotate(total=Count("id")):
-        conteo_estado[item["estado"]] = item["total"]
-
+    # Obtener todas las incapacidades con relaciones
+    incapacidades = Incapacidad.objects.select_related("colaborador", "tipo").all()
     total = incapacidades.count()
-    dias = incapacidades.aggregate(total=Sum("dias"))["total"] or 0
-    recientes = incapacidades.order_by("-fecha_creacion")[:6]
-    historial = HistorialEstado.objects.select_related("incapacidad", "usuario", "incapacidad__colaborador")[:6]
-    tipos = TipoIncapacidad.objects.annotate(total=Count("incapacidades")).order_by("-total")
+    
+    # Conteo por estado de forma segura
+    conteo_estado = {estado: 0 for estado, _label in Incapacidad.ESTADO_CHOICES}
+    if total > 0:
+        for item in incapacidades.values("estado").annotate(total=Count("id")):
+            conteo_estado[item["estado"]] = item["total"]
 
-    # Cálculos para métricas profesionales
+    # Métricas profesionales con fallback seguro
     hoy = timezone.now()
     inicio_mes = hoy.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
     activas_count = incapacidades.exclude(estado__in=[Incapacidad.ESTADO_PAGADA, Incapacidad.ESTADO_RECHAZADA]).count()
     pendientes_count = incapacidades.filter(estado=Incapacidad.ESTADO_RECIBIDA).count()
-    dias_mes = incapacidades.filter(
-        fecha_inicio__gte=inicio_mes.date()
-    ).aggregate(total=Sum("dias"))["total"] or 0
     
-    # Tasa de trámite (progreso de casos)
+    dias_query = incapacidades.filter(fecha_inicio__gte=inicio_mes.date()).aggregate(total=Sum("dias"))
+    dias_mes = dias_query["total"] or 0
+    
+    tasa_tramite = 0
     if total > 0:
         tasa_tramite = int(((total - pendientes_count) / total) * 100)
-    else:
-        tasa_tramite = 0
 
-    # Datos para gráficos
-    grafico_estados_labels = [str(label) for _value, label in Incapacidad.ESTADO_CHOICES]
-    grafico_estados_data = [conteo_estado.get(value, 0) for value, _label in Incapacidad.ESTADO_CHOICES]
+    # Datos para gráficos (Blindaje total)
+    labels_list = [str(label) for _value, label in Incapacidad.ESTADO_CHOICES]
+    data_list = [conteo_estado.get(value, 0) for value, _label in Incapacidad.ESTADO_CHOICES]
 
     contexto = {
         "total_incapacidades": total,
         "total_colaboradores": Colaborador.objects.count(),
-        "dias_reportados": dias,
         "activas_count": activas_count,
         "pendientes_count": pendientes_count,
         "dias_mes": dias_mes,
         "tasa_tramite": tasa_tramite,
-        "conteo_estado": conteo_estado,
-        "grafico_estados_labels": json.dumps(grafico_estados_labels),
-        "grafico_estados_data": json.dumps(grafico_estados_data),
-        "recientes": recientes,
-        "historial": historial,
-        "tipos": tipos,
+        "grafico_estados_labels": json.dumps(labels_list),
+        "grafico_estados_data": json.dumps(data_list),
+        "recientes": incapacidades.order_by("-fecha_creacion")[:6],
+        "historial": HistorialEstado.objects.select_related("incapacidad", "usuario", "incapacidad__colaborador").order_by("-fecha")[:6],
+        "tipos": TipoIncapacidad.objects.annotate(total=Count("incapacidades")).order_by("-total")[:5],
     }
     return render(request, "gestion/dashboard.html", contexto)
 
