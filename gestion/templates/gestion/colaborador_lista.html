@@ -14,16 +14,16 @@
 <form class="filters" method="get">
     <div class="filters-row" style="grid-template-columns: 1fr 1fr 1fr auto auto;">
         <div class="filter-group">
-            <label class="filter-label">🔍 Buscar por nombre</label>
+            <label class="filter-label"><i data-lucide="search" style="width:12px; height:12px; vertical-align:middle;"></i> Búsqueda por nombre</label>
             <input type="search" name="q" value="{{ q }}" placeholder="Ej: Juan Pérez">
         </div>
         <div class="filter-group">
-            <label class="filter-label">🪪 Documento</label>
-            <input type="search" name="doc" value="{{ doc|default:'' }}" placeholder="Número de identificación">
+            <label class="filter-label"><i data-lucide="credit-card" style="width:12px; height:12px; vertical-align:middle;"></i> Identificación</label>
+            <input type="search" name="doc" value="{{ doc|default:'' }}" placeholder="Número de documento">
         </div>
         <div class="filter-group">
-            <label class="filter-label">🏢 Área</label>
-            <input type="search" name="area" value="{{ area|default:'' }}" placeholder="Área o departamento">
+            <label class="filter-label"><i data-lucide="briefcase" style="width:12px; height:12px; vertical-align:middle;"></i> Unidad / Área</label>
+            <input type="search" name="area" value="{{ area|default:'' }}" placeholder="Departamento">
         </div>
         <div class="filter-group" style="justify-content:flex-end;">
             <label class="filter-label">&nbsp;</label>

@@ -7,6 +7,14 @@
     <title>{% block title %}INCASOFT Solutions{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Fuentes -->
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Iconos -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Ajuste para iconos Lucide */
+        .lucide { width: 18px; height: 18px; stroke-width: 2px; }
+    </style>
     <link rel="stylesheet" href="{% static 'gestion/css/styles.css' %}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script defer src="{% static 'gestion/js/charts.js' %}"></script>
@@ -15,50 +23,46 @@
     <aside class="sidebar">
         <div class="sidebar-inner">
             <a class="brand" href="{% url 'gestion:dashboard' %}">
-                <img class="brand-logo-img"
-                     src="{% static 'gestion/img/logo.png' %}"
-                     alt="INCASOFT Solutions logo">
-                <span class="brand-text">
+                <div class="brand-logo">IS</div>
+                <div class="brand-text">
                     <strong>INCASOFT</strong>
-                    <small>Gestión de Incapacidades</small>
-                </span>
+                    <small>Solutions Group</small>
+                </div>
             </a>
 
             <div class="sidebar-sep"></div>
 
-            <div>
-                <p class="nav-label">Módulos</p>
-                <nav class="nav">
-                    <a href="{% url 'gestion:dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>
-                        <span class="nav-icon">📊</span> Tablero
-                    </a>
-                    <a href="{% url 'gestion:incapacidad_lista' %}" {% if 'incapacidad' in request.resolver_match.url_name %}class="active"{% endif %}>
-                        <span class="nav-icon">🏥</span> Incapacidades
-                    </a>
-                    <a href="{% url 'gestion:colaborador_lista' %}" {% if 'colaborador' in request.resolver_match.url_name %}class="active"{% endif %}>
-                        <span class="nav-icon">👥</span> Colaboradores
-                    </a>
-                    <a href="{% url 'gestion:reportes' %}" {% if request.resolver_match.url_name == 'reportes' %}class="active"{% endif %}>
-                        <span class="nav-icon">📈</span> Reportes
-                    </a>
-                    {% if puede_gestionar_usuarios %}
-                        <a href="{% url 'gestion:usuario_lista' %}" {% if 'usuario' in request.resolver_match.url_name %}class="active"{% endif %}>
-                            <span class="nav-icon">🔐</span> Usuarios
-                        </a>
-                    {% endif %}
-                </nav>
-            </div>
+            <nav class="nav">
+                <p class="nav-label">Panel Principal</p>
+                <a href="{% url 'gestion:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <i data-lucide="layout-dashboard"></i> Dashboard
+                </a>
+                
+                <p class="nav-label">Operaciones</p>
+                <a href="{% url 'gestion:incapacidad_lista' %}" class="{% if 'incapacidad' in request.resolver_match.url_name %}active{% endif %}">
+                    <i data-lucide="clipboard-list"></i> Gestión de Incapacidades
+                </a>
+                <a href="{% url 'gestion:colaborador_lista' %}" class="{% if 'colaborador' in request.resolver_match.url_name %}active{% endif %}">
+                    <i data-lucide="users"></i> Registro de Colaboradores
+                </a>
+
+                {% if user.is_staff or user.is_superuser %}
+                <p class="nav-label">Administración</p>
+                <a href="{% url 'gestion:usuario_lista' %}" class="{% if 'usuario' in request.resolver_match.url_name %}active{% endif %}">
+                    <i data-lucide="shield-check"></i> Control de Accesos
+                </a>
+                <a href="{% url 'gestion:auditoria_lista' %}" class="{% if 'auditoria' in request.resolver_match.url_name %}active{% endif %}">
+                    <i data-lucide="history"></i> Trazabilidad / Auditoría
+                </a>
+                {% endif %}
+            </nav>
 
             <div class="session">
-                <span class="session-name">{{ request.user.get_full_name|default:request.user.username }}</span>
-                <span class="session-role">
-                    {% with g=user.groups.all|first %}
-                        {% if g %}{{ g.name }}{% elif user.is_superuser %}Superusuario{% else %}Usuario{% endif %}
-                    {% endwith %}
-                </span>
-                <form method="post" action="{% url 'logout' %}">
+                <span class="session-name">{{ user.get_full_name|default:user.username }}</span>
+                <span class="session-role">{% if user.is_superuser %}Administrador Global{% else %}Operador de Sistema{% endif %}</span>
+                <form action="{% url 'logout' %}" method="post" style="display: inline;">
                     {% csrf_token %}
-                    <button class="link-button" type="submit">↩ Cerrar sesión</button>
+                    <button type="submit" class="link-button">Finalizar Sesión</button>
                 </form>
             </div>
         </div>
@@ -68,11 +72,19 @@
         {% if messages %}
             <div class="messages">
                 {% for message in messages %}
-                    <div class="message {{ message.tags }}">{{ message }}</div>
+                    <div class="message {{ message.tags }}">
+                        {{ message }}
+                    </div>
                 {% endfor %}
             </div>
         {% endif %}
+
         {% block content %}{% endblock %}
     </main>
+
+    <script>
+        // Inicializar iconos
+        lucide.createIcons();
+    </script>
 </body>
 </html>

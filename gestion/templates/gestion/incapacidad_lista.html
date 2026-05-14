@@ -10,7 +10,7 @@
         {% if puede_editar %}
             <a class="button primary" href="{% url 'gestion:incapacidad_crear' %}">＋ Nueva incapacidad</a>
         {% endif %}
-        <a class="button ghost" href="{% url 'gestion:incapacidad_exportar_excel' %}?{{ request.GET.urlencode }}">📊 Exportar Excel</a>
+        <a class="button ghost" href="{% url 'gestion:incapacidad_exportar_excel' %}?{{ request.GET.urlencode }}"><i data-lucide="download"></i> Exportar Informe</a>
     </div>
 </header>
 
@@ -18,7 +18,7 @@
 <form class="filters" method="get">
     <div class="filters-row">
         <div class="filter-group">
-            <label class="filter-label">🔍 Buscar nombre / documento / radicado</label>
+            <label class="filter-label"><i data-lucide="search" style="width:12px; height:12px; vertical-align:middle;"></i> Búsqueda por nombre o radicado</label>
             {{ form.q }}
         </div>
         <div class="filter-group">
@@ -88,7 +88,7 @@
                 <td><small>{{ inc.numero_radicado|default:"—" }}</small></td>
                 <td class="text-center">
                     {% if inc.soporte_medico or inc.n_documentos %}
-                        <span title="Tiene soporte u otros archivos">📎</span>
+                        <i data-lucide="paperclip" style="color:var(--teal);"></i>
                     {% else %}
                         <span class="muted">—</span>
                     {% endif %}

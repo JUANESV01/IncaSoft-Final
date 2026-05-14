@@ -70,7 +70,7 @@
             <div><dt>Última actualización</dt><dd>{{ incapacidad.fecha_actualizacion|date:"d/m/Y H:i" }}</dd></div>
         </dl>
         {% if incapacidad.observaciones %}
-            <p class="note">📝 {{ incapacidad.observaciones }}</p>
+            <p class="note"><i data-lucide="info" style="vertical-align:middle; margin-right:6px;"></i> {{ incapacidad.observaciones }}</p>
         {% endif %}
     </article>
 
@@ -92,7 +92,7 @@
 
 <section class="panel">
     <div class="panel-head">
-        <h2>📋 Historial de estados</h2>
+        <h2>Historial de Movimientos</h2>
     </div>
     <div class="timeline wide">
         {% for item in historial %}
@@ -109,7 +109,7 @@
 
 <section class="panel">
     <div class="panel-head">
-        <h2>📎 Documentos adjuntos</h2>
+        <h2>Documentación Adjunta</h2>
         {% if puede_editar %}
             <a class="button primary" href="{% url 'gestion:documento_subir' incapacidad.pk %}">+ Adjuntar archivo</a>
         {% endif %}
@@ -133,11 +133,7 @@
                 <tr>
                     <td>
                         <div style="display:flex; align-items:center; gap:8px;">
-                            {% if doc.es_imagen %}🖼️
-                            {% elif doc.es_pdf %}📄
-                            {% elif doc.es_word %}📝
-                            {% elif doc.es_excel %}📊
-                            {% else %}📁{% endif %}
+                            <i data-lucide="file-text"></i>
                             <strong style="word-break:break-all;">{{ doc.archivo.name|cut:"documentos/" }}</strong>
                         </div>
                     </td>

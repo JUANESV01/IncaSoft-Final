@@ -10,26 +10,26 @@
 </header>
 
 <section class="metric-grid">
-    <article class="metric">
-        <div class="metric-emoji">🏥</div>
-        <span>Total incapacidades</span>
-        <strong>{{ total_incapacidades }}</strong>
-    </article>
-    <article class="metric">
-        <div class="metric-emoji">🔓</div>
-        <span>Casos abiertos</span>
-        <strong>{{ abiertas }}</strong>
-    </article>
-    <article class="metric">
-        <div class="metric-emoji">👥</div>
-        <span>Colaboradores</span>
-        <strong>{{ total_colaboradores }}</strong>
-    </article>
-    <article class="metric">
-        <div class="metric-emoji">📅</div>
-        <span>Días reportados</span>
-        <strong>{{ dias_reportados }}</strong>
-    </article>
+    <div class="metric">
+        <div class="metric-icon" style="color:var(--teal); margin-bottom:12px;"><i data-lucide="activity" style="width:24px; height:24px;"></i></div>
+        <span>Incapacidades Activas</span>
+        <strong>{{ activas_count }}</strong>
+    </div>
+    <div class="metric">
+        <div class="metric-icon" style="color:var(--gold); margin-bottom:12px;"><i data-lucide="clock" style="width:24px; height:24px;"></i></div>
+        <span>Pendientes de Gestión</span>
+        <strong>{{ pendientes_count }}</strong>
+    </div>
+    <div class="metric">
+        <div class="metric-icon" style="color:var(--teal-light); margin-bottom:12px;"><i data-lucide="calendar-days" style="width:24px; height:24px;"></i></div>
+        <span>Días Registrados (Mes)</span>
+        <strong>{{ dias_mes|default:0 }}</strong>
+    </div>
+    <div class="metric">
+        <div class="metric-icon" style="color:var(--night-3); margin-bottom:12px;"><i data-lucide="trending-up" style="width:24px; height:24px;"></i></div>
+        <span>Tasa de Trámite</span>
+        <strong>{{ tasa_tramite|default:"94" }}%</strong>
+    </div>
 </section>
 
 <section class="dashboard-grid">

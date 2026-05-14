@@ -60,19 +60,17 @@
                     {% if form.instance.soporte_medico %}
                         {% if form.instance.soporte_es_imagen %}
                             <img src="{{ form.instance.soporte_medico.url }}" alt="Vista previa">
-                        {% elif form.instance.soporte_es_pdf %}
-                            📄
                         {% else %}
-                            📎
+                            <i data-lucide="file-text" style="width:32px; height:32px; color:var(--muted);"></i>
                         {% endif %}
                     {% else %}
-                        📁
+                        <i data-lucide="folder-up" style="width:32px; height:32px; color:var(--muted);"></i>
                     {% endif %}
                 </div>
                 <div class="doc-info">
                     {{ form.soporte_medico }}
                     <div id="ai-status" style="margin-top: 5px;"></div>
-                    <button type="button" id="btn-analizar-ia" class="button ghost" style="font-size: 11px; padding: 4px 8px; min-height: auto; margin-top: 5px;">✨ Analizar con IA</button>
+                    <button type="button" id="btn-analizar-ia" class="button ghost" style="font-size: 11px; padding: 4px 8px; min-height: auto; margin-top: 5px;"><i data-lucide="sparkles" style="width:12px; height:12px;"></i> Procesar con IA</button>
                     <small class="muted">{{ form.soporte_medico.help_text }}</small>
                     {% for error in form.soporte_medico.errors %}<span class="field-error">⚠ {{ error }}</span>{% endfor %}
                 </div>
@@ -86,7 +84,7 @@
     </div>
 
     <div class="actions" style="padding-top:16px;border-top:1px solid var(--line);">
-        <button class="button primary" type="submit">💾 Guardar Incapacidad</button>
+        <button class="button primary" type="submit">Confirmar Registro</button>
         <a class="button ghost" href="{% if form.instance.pk %}{{ form.instance.get_absolute_url }}{% else %}{% url 'gestion:incapacidad_lista' %}{% endif %}">Cancelar</a>
     </div>
 </form>
@@ -123,7 +121,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            aiStatus.innerHTML = '<small class="muted">⏳ Analizando con IA...</small>';
+            aiStatus.innerHTML = '<small class="muted">Procesando documento...</small>';
             btnAnalizar.disabled = true;
 
             const formData = new FormData();
@@ -139,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.error) {
                     aiStatus.innerHTML = `<small class="field-error">⚠ Error: ${data.error}</small>`;
                 } else {
-                    aiStatus.innerHTML = '<small style="color:var(--success)">✅ Análisis completado</small>';
+                    aiStatus.innerHTML = '<small style="color:var(--success)">Lectura completada</small>';
                     
                     // Autocompletar campos
                     if (data.fecha_inicio) document.querySelector('[name="fecha_inicio"]').value = data.fecha_inicio;
