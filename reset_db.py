@@ -7,33 +7,24 @@ def reset():
 
     from django.contrib.auth.models import User, Group
     from gestion.models import Incapacidad, Colaborador, TipoIncapacidad, HistorialEstado, Auditoria, Documento
+    from crear_admin import main as recrear_todo
 
-    print("⚠️  INICIANDO LIMPIEZA TOTAL DE LA BASE DE DATOS...")
+    print("⚠️  INICIANDO RESET TOTAL DE FÁBRICA...")
     
-    # Borrar en orden para evitar errores de llave foránea
-    print("- Borrando Documentos...")
+    # Borrado masivo
     Documento.objects.all().delete()
-    
-    print("- Borrando Historial de estados...")
     HistorialEstado.objects.all().delete()
-    
-    print("- Borrando Incapacidades...")
     Incapacidad.objects.all().delete()
-    
-    print("- Borrando Colaboradores...")
     Colaborador.objects.all().delete()
-    
-    print("- Borrando Tipos de Incapacidad...")
     TipoIncapacidad.objects.all().delete()
-    
-    print("- Borrando Auditoría...")
     Auditoria.objects.all().delete()
+    User.objects.all().delete() # Borramos TODO para evitar conflictos
+    Group.objects.all().delete()
     
-    print("- Borrando Usuarios (excepto admin)...")
-    User.objects.exclude(username='admin').delete()
-    
-    print("✅ LIMPIEZA COMPLETADA.")
-    print("ℹ️  Los datos básicos se recrearán automáticamente al reiniciar la app vía crear_admin.py")
+    print("✅ BASE DE DATOS LIMPIA.")
+    print("🔄 RECREANDO DATOS INICIALES...")
+    recrear_todo()
+    print("✨ SISTEMA RESTAURADO Y LISTO.")
 
 if __name__ == "__main__":
     reset()

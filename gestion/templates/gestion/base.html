@@ -51,9 +51,6 @@
                 <a href="{% url 'gestion:usuario_lista' %}" class="{% if 'usuario' in request.resolver_match.url_name %}active{% endif %}">
                     <i data-lucide="shield-check"></i> Control de Accesos
                 </a>
-                <a href="{% url 'gestion:auditoria_lista' %}" class="{% if 'auditoria' in request.resolver_match.url_name %}active{% endif %}">
-                    <i data-lucide="history"></i> Trazabilidad / Auditoría
-                </a>
                 {% endif %}
             </nav>
 
