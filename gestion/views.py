@@ -1,6 +1,7 @@
 import json
 import mimetypes
 import os
+from django.utils import timezone
 
 from django.conf import settings
 from django.contrib import messages
@@ -94,11 +95,12 @@ def dashboard(request):
 
     # Cálculos para métricas profesionales
     hoy = timezone.now()
+    inicio_mes = hoy.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
     activas_count = incapacidades.exclude(estado__in=[Incapacidad.ESTADO_PAGADA, Incapacidad.ESTADO_RECHAZADA]).count()
     pendientes_count = incapacidades.filter(estado=Incapacidad.ESTADO_RECIBIDA).count()
     dias_mes = incapacidades.filter(
-        fecha_inicio__month=hoy.month, 
-        fecha_inicio__year=hoy.year
+        fecha_inicio__gte=inicio_mes.date()
     ).aggregate(total=Sum("dias"))["total"] or 0
     
     # Tasa de trámite (progreso de casos)
