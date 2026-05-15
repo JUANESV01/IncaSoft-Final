@@ -8,6 +8,10 @@
         <h1>{{ incapacidad.colaborador.nombre_completo }}</h1>
     </div>
     <div class="actions">
+        {% if gemini_ia_habilitada %}
+            <button class="button primary" id="btn-ia-detalle">✨ Análisis IA</button>
+        {% endif %}
+        <a class="button ghost" href="{% url 'gestion:incapacidad_pdf' incapacidad.pk %}" target="_blank">📄 Exportar PDF</a>
         {% if puede_editar and not incapacidad.esta_cerrada %}
             <a class="button primary" href="{% url 'gestion:incapacidad_estado' incapacidad.pk %}">🔄 Actualizar estado</a>
         {% endif %}
@@ -161,4 +165,50 @@
         <p class="empty" style="padding:20px 0;">No hay documentos adjuntos. {% if puede_editar %}<a href="{% url 'gestion:documento_subir' incapacidad.pk %}">Adjuntar el primero →</a>{% endif %}</p>
     {% endif %}
 </section>
+
+{% if gemini_ia_habilitada %}
+<div id="panel-ia-detalle" class="panel no-print" style="display:none; margin-top:20px; border-left: 4px solid var(--teal);">
+    <div class="panel-head">
+        <h2>✨ Análisis Inteligente del Caso</h2>
+        <button class="button ghost" onclick="document.getElementById('panel-ia-detalle').style.display='none'">Cerrar</button>
+    </div>
+    <div id="ia-status-detalle" class="message" style="display:none;"></div>
+    <div id="ia-salida-detalle" class="ia-reporte-salida"></div>
+</div>
+
+<script>
+document.getElementById('btn-ia-detalle').addEventListener('click', async function() {
+    const panel = document.getElementById('panel-ia-detalle');
+    const status = document.getElementById('ia-status-detalle');
+    const salida = document.getElementById('ia-salida-detalle');
+    
+    panel.style.display = 'block';
+    status.style.display = 'block';
+    status.className = 'message';
+    status.textContent = 'Generando análisis profesional...';
+    salida.textContent = '';
+    
+    try {
+        const response = await fetch('{% url "gestion:incapacidad_ia_analisis" incapacidad.pk %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.ok) {
+            status.style.display = 'none';
+            salida.textContent = data.texto;
+        } else {
+            status.className = 'message error';
+            status.textContent = data.error;
+        }
+    } catch (e) {
+        status.className = 'message error';
+        status.textContent = 'Error de conexión con el servidor.';
+    }
+});
+</script>
+{% endif %}
 {% endblock %}

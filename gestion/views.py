@@ -274,8 +274,61 @@ def incapacidad_detalle(request, pk):
             "incapacidad": incapacidad,
             "historial": incapacidad.historial.select_related("usuario"),
             "puede_editar": puede_editar_operacion(request.user),
+            "gemini_ia_habilitada": bool(getattr(settings, "GEMINI_API_KEY", "")),
         },
     )
+
+
+@login_required
+def incapacidad_pdf(request, pk):
+    """Genera una versión imprimible/PDF del detalle de una incapacidad."""
+    incapacidad = get_object_or_404(
+        Incapacidad.objects.select_related("colaborador", "tipo", "creado_por").prefetch_related("documentos"),
+        pk=pk
+    )
+    from django.utils import timezone
+    contexto = {
+        "incapacidad": incapacidad,
+        "historial": incapacidad.historial.select_related("usuario").order_by("-fecha"),
+        "ahora": timezone.now(),
+    }
+    return render(request, "gestion/incapacidad_pdf.html", contexto)
+
+
+@login_required
+@require_POST
+def incapacidad_ia_analisis(request, pk):
+    """Genera un resumen y recomendaciones profesionales para una incapacidad específica usando Gemini."""
+    if not getattr(settings, "GEMINI_API_KEY", ""):
+        return JsonResponse({"ok": False, "error": "API Key no configurada"}, status=503)
+
+    incapacidad = get_object_or_404(Incapacidad.objects.select_related("colaborador", "tipo"), pk=pk)
+    
+    prompt = f"""Analiza esta incapacidad médica y redacta un resumen ejecutivo profesional (3-4 párrafos) con recomendaciones de seguimiento para el área de Gestión Humana.
+    
+    Datos del caso:
+    - Colaborador: {incapacidad.colaborador.nombre_completo}
+    - Cargo/Área: {incapacidad.colaborador.cargo} / {incapacidad.colaborador.area}
+    - Tipo: {incapacidad.tipo.nombre}
+    - Periodo: {incapacidad.fecha_inicio} al {incapacidad.fecha_fin} ({incapacidad.dias} días)
+    - Estado actual: {incapacidad.get_estado_display()}
+    - Observaciones: {incapacidad.observaciones or "Ninguna"}
+    
+    Incluye:
+    1) Resumen del impacto en la operación (según los días).
+    2) Recomendaciones de trámites con {incapacidad.entidad_responsable}.
+    3) Sugerencias para el bienestar del colaborador.
+    """
+
+    try:
+        texto = generar_analisis_gemini(
+            prompt,
+            api_key=settings.GEMINI_API_KEY,
+            model_name=settings.GEMINI_MODEL,
+        )
+        return JsonResponse({"ok": True, "texto": texto})
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
 
 
 @login_required

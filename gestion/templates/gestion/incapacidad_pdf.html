@@ -1,0 +1,83 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Incapacidad - {{ incapacidad.colaborador.nombre_completo }}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=DM+Sans:wght@400;500;700&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; font-size: 12px; color: #0C2A2E; background: #fff; padding: 40px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #C8902A; padding-bottom: 20px; margin-bottom: 30px; }
+        .logo-text strong { display: block; font-family: 'Crimson Pro', serif; font-size: 20px; color: #1A5F6E; }
+        .logo-text small { color: #C8902A; text-transform: uppercase; letter-spacing: 1px; font-size: 10px; }
+        .meta { text-align: right; font-size: 11px; color: #6A8C90; }
+        h1 { font-family: 'Crimson Pro', serif; font-size: 24px; color: #0C2A2E; margin-bottom: 20px; border-bottom: 1px solid #D2E3E6; padding-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
+        .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #C8902A; font-weight: 700; margin-bottom: 10px; border-bottom: 1px solid #F6F3EE; }
+        .data-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #F4F7F8; }
+        .data-label { color: #6A8C90; font-weight: 500; }
+        .data-value { font-weight: 700; color: #1A5F6E; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; background: #EEF5F6; }
+        .timeline { margin-top: 30px; }
+        .timeline-item { padding: 10px; border-left: 2px solid #1A5F6E; background: #F4F7F8; margin-bottom: 8px; border-radius: 0 4px 4px 0; }
+        .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #D2E3E6; font-size: 10px; color: #6A8C90; text-align: center; }
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body onload="window.print()">
+    <div class="header">
+        <div class="logo-text">
+            <strong>INCASOFT Solutions</strong>
+            <small>Gestión de Incapacidades</small>
+        </div>
+        <div class="meta">
+            <strong>Documento Oficial de Registro</strong><br>
+            Generado: {{ ahora|date:"d/m/Y H:i" }}
+        </div>
+    </div>
+
+    <h1>Detalle de Incapacidad: {{ incapacidad.colaborador.nombre_completo }}</h1>
+
+    <div class="grid">
+        <div>
+            <h2 class="section-title">Datos del Colaborador</h2>
+            <div class="data-row"><span class="data-label">Identificación</span><span class="data-value">{{ incapacidad.colaborador.tipo_documento }} {{ incapacidad.colaborador.numero_identificacion }}</span></div>
+            <div class="data-row"><span class="data-label">Cargo</span><span class="data-value">{{ incapacidad.colaborador.cargo }}</span></div>
+            <div class="data-row"><span class="data-label">Área</span><span class="data-value">{{ incapacidad.colaborador.area }}</span></div>
+            <div class="data-row"><span class="data-label">EPS</span><span class="data-value">{{ incapacidad.colaborador.eps }}</span></div>
+        </div>
+        <div>
+            <h2 class="section-title">Datos de la Incapacidad</h2>
+            <div class="data-row"><span class="data-label">Estado</span><span class="badge">{{ incapacidad.get_estado_display }}</span></div>
+            <div class="data-row"><span class="data-label">Tipo</span><span class="data-value">{{ incapacidad.tipo.nombre }}</span></div>
+            <div class="data-row"><span class="data-label">Inicio</span><span class="data-value">{{ incapacidad.fecha_inicio|date:"d/m/Y" }}</span></div>
+            <div class="data-row"><span class="data-label">Fin</span><span class="data-value">{{ incapacidad.fecha_fin|date:"d/m/Y" }}</span></div>
+            <div class="data-row"><span class="data-label">Total Días</span><span class="data-value">{{ incapacidad.dias }}</span></div>
+            <div class="data-row"><span class="data-label">Radicado</span><span class="data-value">{{ incapacidad.numero_radicado|default:"—" }}</span></div>
+        </div>
+    </div>
+
+    {% if incapacidad.observaciones %}
+    <div style="margin-bottom: 30px;">
+        <h2 class="section-title">Observaciones</h2>
+        <p style="padding: 10px; background: #FDF6E3; border-left: 3px solid #C8902A; font-style: italic;">{{ incapacidad.observaciones }}</p>
+    </div>
+    {% endif %}
+
+    <div class="timeline">
+        <h2 class="section-title">Historial de Movimientos</h2>
+        {% for item in historial %}
+        <div class="timeline-item">
+            <strong>{{ item.get_estado_nuevo_display }}</strong> &middot; <small>{{ item.fecha|date:"d/m/Y H:i" }}</small>
+            <p style="margin-top:4px;">{{ item.comentario|default:"Sin comentario" }}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="footer">
+        Este es un reporte generado automáticamente por el sistema INCASOFT. 
+        Verifique la autenticidad con los soportes físicos adjuntos.
+    </div>
+</body>
+</html>
