@@ -490,6 +490,7 @@ textarea { min-height: 96px; resize: vertical; }
   .sidebar, .no-print, .page-header .button { display: none !important; }
   .main { margin: 0; padding: 0; }
   .panel, .metric { box-shadow: none; border: 1px solid #ddd; }
+  .print-only { display: block !important; }
 }
 /* ── FORMULARIO INCAPACIDAD PERSONALIZADO ── */
 .incapacidad-form-grid {

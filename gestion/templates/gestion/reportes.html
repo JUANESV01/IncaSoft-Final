@@ -57,12 +57,13 @@
 </form>
 
 {% if gemini_ia_habilitada %}
-<section class="panel no-print ia-reporte-panel" id="panel-ia-reporte">
-    <div class="panel-head">
+<section class="panel ia-reporte-panel" id="panel-ia-reporte">
+    <div class="panel-head no-print">
         <h2>Análisis con inteligencia artificial</h2>
         <span class="muted" style="font-size:13px;">Usa los mismos filtros del reporte · Solo se envían totales agregados (sin nombres ni documentos)</span>
     </div>
-    <p class="muted" style="font-size:13px;margin-bottom:14px;">
+    <div class="table-title print-only" style="display:none; font-family:'Crimson Pro', serif; font-size:16px; font-weight:700; color:#0C2A2E; margin-bottom:10px; border-bottom:1px solid #D2E3E6; padding-bottom:8px;">✨ Análisis Inteligente (Gemini AI)</div>
+    <p class="muted no-print" style="font-size:13px;margin-bottom:14px;">
         El texto lo genera Google Gemini; verifique siempre los datos críticos antes de decisiones formales.
     </p>
     <div id="ia-reporte-estado" class="message" style="display:none;" role="status"></div>

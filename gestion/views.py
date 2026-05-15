@@ -420,6 +420,10 @@ def reportes_pdf(request):
     form, incapacidades = _incapacidades_filtradas(request)
     por_estado = list(incapacidades.values("estado").annotate(total=Count("id")).order_by("estado"))
     por_tipo = list(incapacidades.values("tipo__nombre").annotate(total=Count("id")).order_by("-total"))
+    
+    # Recuperar el último análisis de IA si existe para incluirlo en el PDF
+    ia_analisis = request.session.get('ultimo_analisis_ia')
+    
     contexto = {
         "form": form,
         "incapacidades": incapacidades,
@@ -427,6 +431,7 @@ def reportes_pdf(request):
         "dias": incapacidades.aggregate(total=Sum("dias"))["total"] or 0,
         "por_estado": por_estado,
         "por_tipo": por_tipo,
+        "ia_analisis": ia_analisis,
         "ahora": tz.localtime(),
     }
     return render(request, "gestion/reportes_pdf.html", contexto)
@@ -496,6 +501,8 @@ def reportes_ia_analisis(request):
         "Analisis IA (Gemini) en reportes",
         f"total={total}; modelo={settings.GEMINI_MODEL}",
     )
+    # Guardar en sesión para que salga en el PDF si el usuario lo exporta justo después
+    request.session['ultimo_analisis_ia'] = texto
     return JsonResponse({"ok": True, "texto": texto})
 
 
